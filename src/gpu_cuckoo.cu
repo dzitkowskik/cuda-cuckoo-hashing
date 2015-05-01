@@ -116,3 +116,16 @@ int2** cuckooHash(int2* values, int in_size, int2& out_size, int2& out_seeds)
 	return hashMaps;
 }
 
+int2** cuckooHash(int2* values, int in_size, int2** hashMaps, int2& hashMap_size, int2 seeds)
+{
+	auto collisions = cuckooFillHashMap(values, in_size, hashMaps[0], hashMap_size.y, seeds.x);
+	int i = 1;
+	while(collisions.size())
+	{
+		collisions = cuckooFillHashMap(collisions.data().get(), collisions.size(), hashMaps[i], hashMap_size.y, i == 1 ? seeds.y : seeds.x);
+		i = (i+1)%NUM_HASHES;
+	}
+
+	return hashMaps;
+}
+

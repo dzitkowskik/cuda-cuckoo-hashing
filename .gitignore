@@ -3,7 +3,7 @@
 ### MY ###
 *.log
 .*_time
-gpuStore
+cuckooHash
 
 ### OSX ###
 .DS_Store

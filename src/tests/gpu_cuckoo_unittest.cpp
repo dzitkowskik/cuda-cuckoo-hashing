@@ -7,5 +7,7 @@
 
 #include "gpu_cuckoo_unittest.h"
 
-
+TEST_F(GpuCuckooTest, cuckooHash_simpleHashmapCreate)
+{
+}
 

@@ -8,8 +8,21 @@
 #ifndef GPU_CUCKOO_UNITTEST_H_
 #define GPU_CUCKOO_UNITTEST_H_
 
-class GpuCuckooUnittest
+#include <gtest/gtest.h>
+
+class GpuCuckooTest: public testing::Test
 {
+protected:
+	GpuCuckooTest(){}
+    ~GpuCuckooTest(){}
+
+    virtual void SetUp()
+    {
+    }
+
+    virtual void TearDown()
+    {
+    }
 };
 
 #endif /* GPU_CUCKOO_UNITTEST_H_ */
