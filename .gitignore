@@ -2,7 +2,7 @@
 
 ### MY ###
 *.log
-.test_time
+.*_time
 gpuStore
 
 ### OSX ###

@@ -1,11 +1,8 @@
 /*
- * gpu_cuckoo_unittest.cpp
+ * gpu_cuckoo_benchmark.cpp
  *
  *  Created on: 01-05-2015
  *      Author: Karol Dzitkowski
  */
-
-#include "gpu_cuckoo_unittest.h"
-
 
 
