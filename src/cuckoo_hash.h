@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <cuda_runtime_api.h>
 
+#define HASH_FUNC_NO 2
+
 using namespace std;
 
 class CuckooHash
@@ -23,28 +25,44 @@ protected:
 private:
 	size_t _maxSize;
 	size_t _currentSize;
-	unsigned short _hFuncNum;
-	int* _hashConstants;
+	int _hashConstants[HASH_FUNC_NO];
 	int2* _data;
 
 public:
 	CuckooHash()
-		: _maxSize(0), _currentSize(0), _hFuncNum(0), _data(NULL), _hashConstants(NULL)
+		: _maxSize(0), _currentSize(0), _data(NULL)
 	{}
 	virtual ~CuckooHash() {FreeMemory();}
 
-	virtual void Init(const size_t maxSize, const unsigned short hFuncNum = 2);
+	virtual void Init(const size_t maxSize);
 	virtual void FreeMemory();
 	virtual void BuildTable(int2* values, size_t size);
 	virtual int2* GetItems(int* keys, size_t size);
 
 	// GETTERS
+
 	dim3 getGrid(size_t size);
 	size_t getMaxSize() { return _maxSize; }
 	size_t getCurrentSize() { return _currentSize; }
 	int2* getData() { return _data; }
 	unsigned getIterationCount() { return MAX_RESTARTS; }
-	unsigned short getHashFunctionsNumber() { return _hFuncNum; }
+
+private:
+	int genSeed();
 };
+
+void naive_cuckooHash(
+		int2* values,
+		int in_size,
+		int2* hashMap,
+		int hashMap_size,
+		int seeds[HASH_FUNC_NO]);
+
+int2* naive_cuckooRetrieve(
+		int* keys,
+		int size,
+		int2* hashMap,
+		int hashMap_size,
+		int seeds[HASH_FUNC_NO]);
 
 #endif /* CUCKOO_HASH_H_ */

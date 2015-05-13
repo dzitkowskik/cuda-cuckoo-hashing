@@ -7,6 +7,8 @@
 
 #include "cuckoo_hash.h"
 #include "macros.h"
+#include <stdlib.h>
+#include <time.h>
 
 dim3 CuckooHash::getGrid(size_t size)
 {
@@ -22,31 +24,41 @@ dim3 CuckooHash::getGrid(size_t size)
 
 void CuckooHash::FreeMemory()
 {
-    CUDA_CALL( cudaFree(_data) );
-    CUDA_CALL( cudaFree(_hashConstants) );
+	CUDA_CALL( cudaFree(_data) );
     CUDA_CHECK_ERROR("Free memory failed!\n");
+
 	_maxSize  = 0;
 	_currentSize = 0;
     _data = NULL;
-    _hashConstants = NULL;
 }
 
-void CuckooHash::Init(const size_t maxSize, const unsigned short hFuncNum)
+int CuckooHash::genSeed()
+{
+	srand (time(NULL));
+	return rand();
+}
+
+void CuckooHash::Init(const size_t maxSize)
 {
 	_maxSize = maxSize;
-	_hFuncNum = hFuncNum;
-	CUDA_CALL( cudaMalloc((void**)&_data, _maxSize*sizeof(int2)) );
-	CUDA_CALL( cudaMalloc((void**)&_hashConstants, _hFuncNum*sizeof(int)) );
+
+	// free slot has key and value equal 0xFFFFFFFF
+	CUDA_CALL( cudaMalloc((void**)&_data, _maxSize * sizeof(int2)) );
+	CUDA_CALL( cudaMemset(_data, 0xFF, _maxSize * sizeof(int2)) );
+
+	_hashConstants[0] = genSeed();
+	_hashConstants[1] = genSeed();
+
 	CUDA_CHECK_ERROR("Init failed!\n");
 }
 
 void CuckooHash::BuildTable(int2* values, size_t size)
 {
-
+	naive_cuckooHash(values, size, _data, _maxSize, _hashConstants);
 }
 
 int2* CuckooHash::GetItems(int* keys, size_t size)
 {
-	return NULL;
+	return naive_cuckooRetrieve(keys, size, _data, _maxSize, _hashConstants);
 }
 
