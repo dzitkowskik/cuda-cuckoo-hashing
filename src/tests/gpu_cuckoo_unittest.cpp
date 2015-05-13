@@ -12,6 +12,7 @@
 #include "macros.h"
 #include <vector_functions.h>
 #include <thrust/device_ptr.h>
+#include "cuckoo_hash.h"
 
 typedef std::chrono::high_resolution_clock myclock;
 
@@ -48,12 +49,15 @@ void printData(int2* data, int N)
 	}
 }
 
-TEST(GpuCuckooTest, cuckooHash_simpleHashmapCreate)
+TEST(GpuCuckooTest, cuckooHash_naive_noexception)
 {
 	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 
+	CuckooHash hash;
+	hash.Init(N*5);
 
+	hash.BuildTable(data, N);
 
 	CUDA_CHECK_RETURN( cudaFree(data) );
 }
