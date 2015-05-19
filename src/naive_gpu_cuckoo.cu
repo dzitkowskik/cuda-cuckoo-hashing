@@ -22,7 +22,8 @@
 
 __device__ int hashFunctionDev(int value, int size, int num)
 {
-	return (0xFAB011991 ^ num + num * value) % (size+1);
+	unsigned long long int hash_value = 0xFAB011991 ^ num + num * value;
+	return hash_value % (size+1);
 }
 
 __global__ void cuckooRefillStencilKernel(int2* values, int values_size, int2* hashMap, bool* stencil, int stencil_size, int seed)
@@ -31,7 +32,7 @@ __global__ void cuckooRefillStencilKernel(int2* values, int values_size, int2* h
 	if (idx >= values_size) return;
 	int2 value = values[idx];
 	int hash = hashFunctionDev(value.x, stencil_size, seed);
-	stencil[hash] = hashMap[hash].x == EMPTY_BUCKET_KEY;
+	stencil[hash] = hashMap[hash].x != EMPTY_BUCKET_KEY;
 }
 
 __global__ void cuckooFillKernel(int2* values, int values_size, int2* hashMap, int hashMap_size, int seed)
@@ -61,42 +62,74 @@ struct is_true
   }
 };
 
-__host__ thrust::device_vector<int2>
-cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int seed)
+__host__ bool* _createElementFitStencil(int2* values, int size, int2* hashMap, int hashMap_size, int seed)
 {
-	bool* stencil;
 	int block_size = CUCKOO_HASHING_BLOCK_SIZE;
 	int block_cnt = (size + block_size - 1) / block_size;
+	bool* stencil;
 	int stencil_size = hashMap_size;
-	thrust::device_vector<int2> result_vector;
-	thrust::device_ptr<int2> hashMap_ptr(hashMap);
 
 	// CREATE STENCIL CONTAINING 1 WHERE SOME ELEMENT WANTS TO BE PUT
 	CUDA_CALL( cudaMalloc((void**)&stencil, stencil_size*sizeof(bool)) );
 	CUDA_CALL( cudaMemset(stencil, 0, stencil_size*sizeof(bool)) );
-	thrust::device_ptr<bool> stencil_ptr(stencil);
+
 	cuckooRefillStencilKernel<<<block_size, block_cnt>>>(values, size, hashMap, stencil, stencil_size, seed);
+	cudaDeviceSynchronize();
+
+	return stencil;
+}
+
+void PrintDeviceVector(thrust::device_vector<int2> data, const char* name)
+{
+	std::cout << name << std::endl;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+    	int2 value = data[i];
+        std::cout << "(" << value.x << "," << value.y << ")";
+    }
+	std::cout << std::endl;
+}
+
+__host__ thrust::device_vector<int2>
+cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int seed)
+{
+	int block_size = CUCKOO_HASHING_BLOCK_SIZE;
+	int block_cnt = (size + block_size - 1) / block_size;
+
+	thrust::device_vector<int2> result_vector;
+	result_vector.reserve(size);
+	thrust::device_ptr<int2> hashMap_ptr(hashMap);
+
+	bool* stencil = _createElementFitStencil(values, size, hashMap, hashMap_size, seed);
+	thrust::device_ptr<bool> stencil_ptr(stencil);
 
 	// COPY ELEMENTS INDICATED BY STENCIL TO RESULT VECTOR
 	thrust::copy_if(hashMap_ptr, hashMap_ptr + hashMap_size, stencil_ptr, result_vector.begin(), is_true());
+	cudaDeviceSynchronize();
 	CUDA_CALL( cudaFree(stencil) );
+
+//	PrintDeviceVector(result_vector, "Result Vector: ");
 
 	// PUT ELEMENTS IN HASH MAP
 	cuckooFillKernel<<<block_size, block_cnt>>>(values, size, hashMap, hashMap_size, seed);
+	cudaDeviceSynchronize();
 
 	// CHECK IF MULTIPLE VALUES WERE NOT PUT IN SAME BUCKET AND CREATE A STENCIL OF THEM
 	CUDA_CALL( cudaMalloc((void**)&stencil, size*sizeof(bool)) );
 	CUDA_CALL( cudaMemset(stencil, 0, size*sizeof(bool)) );
-	cudaDeviceSynchronize();
 	cuckooCheckKernel<<<block_size, block_cnt>>>(values, size, hashMap, hashMap_size, stencil, seed);
 	cudaDeviceSynchronize();
 
 	// COPY ELEMENTS THAT DIDNT FIT TO HASH MAP TO RESULT VECTOR
 	thrust::device_ptr<int2> values_ptr(values);
 	stencil_ptr = thrust::device_pointer_cast(stencil);
-	thrust::copy_if(values_ptr, values_ptr + size, stencil_ptr, result_vector.end(), is_true());
+	thrust::copy_if(values_ptr, values_ptr + size, stencil_ptr, result_vector.begin(), is_true());
+	cudaDeviceSynchronize();
 	CUDA_CALL( cudaFree(stencil) );
 
+//	PrintDeviceVector(result_vector, "Result Vector: ");
+
+	result_vector.shrink_to_fit();
 	return result_vector;
 }
 
