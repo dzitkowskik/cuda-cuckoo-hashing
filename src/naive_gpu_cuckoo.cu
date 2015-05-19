@@ -18,6 +18,7 @@
 
 #define CUCKOO_HASHING_BLOCK_SIZE 64
 #define EMPTY_BUCKET_KEY 0xFFFFFFFF
+#define MAX_RETRIES 100
 
 // hashMap_size - number of hash maps
 
@@ -105,7 +106,7 @@ void testCopy_If()
 	}
 	thrust::copy_if(values.begin(), values.end(), stencil_ptr, result.data(), is_true());
 	thrust::copy_if(values.begin(), values.end(), stencil_ptr, result.data()+(N/2), is_true());
-	PrintIntVector(result, "Result=");
+//	PrintIntVector(result, "Result=");
 
 	CUDA_CALL( cudaFree(stencil) );
 }
@@ -129,11 +130,11 @@ cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int s
 	cudaDeviceSynchronize();
 
 	thrust::device_ptr<int> stencil_ptr(stencil);
-	PrintStencil(stencil_ptr, hashMap_size, "First Stencil:");
+//	PrintStencil(stencil_ptr, hashMap_size, "First Stencil:");
 
 	// resize result_vector to fit additional data pointed by stencil
 	int cnt_1 = thrust::reduce(stencil_ptr, stencil_ptr + hashMap_size);
-	printf("Cnt 1 = %d\n", cnt_1);
+//	printf("Cnt 1 = %d\n", cnt_1);
 	result_vector.resize(result_vector.size()+cnt_1);
 
 	// COPY ELEMENTS INDICATED BY STENCIL TO RESULT VECTOR
@@ -141,7 +142,7 @@ cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int s
 	cudaDeviceSynchronize();
 	CUDA_CALL( cudaFree(stencil) );
 
-	PrintDeviceVector(result_vector, "Result Vector: ");
+//	PrintDeviceVector(result_vector, "Result Vector: ");
 
 	// PUT ELEMENTS IN HASH MAP
 	cuckooFillKernel<<<block_size, block_cnt>>>(values, size, hashMap, hashMap_size, seed);
@@ -153,11 +154,11 @@ cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int s
 	cuckooCheckKernel<<<block_size, block_cnt>>>(values, size, hashMap, hashMap_size, stencil, seed);
 	cudaDeviceSynchronize();
 	stencil_ptr = thrust::device_pointer_cast(stencil);
-	PrintStencil(stencil_ptr, size, "Second Stencil:");
+//	PrintStencil(stencil_ptr, size, "Second Stencil:");
 
 	// resize result_vector to fit additional data pointed by stencil
 	int cnt_2 = thrust::reduce(stencil_ptr, stencil_ptr + size);
-	printf("Cnt 2 = %d\n", cnt_2);
+//	printf("Cnt 2 = %d\n", cnt_2);
 	result_vector.resize(result_vector.size()+cnt_2);
 
 	// COPY ELEMENTS THAT DIDNT FIT TO HASH MAP TO RESULT VECTOR
@@ -166,20 +167,21 @@ cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int s
 	cudaDeviceSynchronize();
 	CUDA_CALL( cudaFree(stencil) );
 
-	PrintDeviceVector(result_vector, "Result Vector: ");
+//	PrintDeviceVector(result_vector, "Result Vector: ");
 	result_vector.shrink_to_fit();
 	return result_vector;
 }
 
-void naive_cuckooHash(int2* values, int in_size, int2* hashMap, int hashMap_size, int seeds[HASH_FUNC_NO])
+bool naive_cuckooHash(int2* values, int in_size, int2* hashMap, int hashMap_size, int seeds[HASH_FUNC_NO])
 {
-	int i = 1;
+	int i = 1, k = 0;
 	auto collisions = cuckooFillHashMap(values, in_size, hashMap, hashMap_size, seeds[i]);
-	while(collisions.size())
+	while(collisions.size() && k++ < MAX_RETRIES)
 	{
 		collisions = cuckooFillHashMap(collisions.data().get(), collisions.size(), hashMap, hashMap_size, seeds[i]);
 		i = (i+1)%HASH_FUNC_NO;
 	}
+	return collisions.size() == 0;
 }
 
 __constant__ int const_seeds[HASH_FUNC_NO];

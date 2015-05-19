@@ -82,6 +82,11 @@ int* getKeys(int2* key_values, int size)
 	return d_data;
 }
 
+TEST(GpuCuckooTest, copy_if_test)
+{
+	testCopy_If();
+}
+
 TEST(GpuCuckooTest, cuckooHash_naive_noexception)
 {
 	int N = 1000;
@@ -95,14 +100,22 @@ TEST(GpuCuckooTest, cuckooHash_naive_noexception)
 	CUDA_CHECK_RETURN( cudaFree(data) );
 }
 
-TEST(GpuCuckooTest, copy_if_test)
+TEST(GpuCuckooTest, cuckooHash_naive_storeSucceeded)
 {
-	testCopy_If();
+	int N = 1000;
+	auto data = GenerateRandomKeyValueData(N);
+
+	CuckooHash hash;
+	hash.Init(N*20);
+
+	EXPECT_TRUE( hash.BuildTable(data, N) );
+
+	CUDA_CHECK_RETURN( cudaFree(data) );
 }
 
 TEST(GpuCuckooTest, cuckooHash_naive_storeAndretrieve)
 {
-	int N = 100;
+	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 	auto keys = getKeys(data, N);
 
@@ -111,8 +124,8 @@ TEST(GpuCuckooTest, cuckooHash_naive_storeAndretrieve)
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);
 
-	printData(data, N, "Actual:");
-	printData(result, N, "Expected:");
+//	printData(data, N, "Actual:");
+//	printData(result, N, "Expected:");
 
 	EXPECT_TRUE( compareData(data, result, N) );
 

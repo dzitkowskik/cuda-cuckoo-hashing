@@ -36,7 +36,7 @@ public:
 
 	virtual void Init(const size_t maxSize);
 	virtual void FreeMemory();
-	virtual void BuildTable(int2* values, size_t size);
+	virtual bool BuildTable(int2* values, size_t size);
 	virtual int2* GetItems(int* keys, size_t size);
 
 	// GETTERS
@@ -48,7 +48,7 @@ public:
 	unsigned getIterationCount() { return MAX_RESTARTS; }
 };
 
-void naive_cuckooHash(
+bool naive_cuckooHash(
 		int2* values,
 		int in_size,
 		int2* hashMap,

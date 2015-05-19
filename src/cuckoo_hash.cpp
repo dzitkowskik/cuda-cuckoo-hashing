@@ -47,9 +47,18 @@ void CuckooHash::Init(const size_t maxSize)
 	CUDA_CHECK_ERROR("Init failed!\n");
 }
 
-void CuckooHash::BuildTable(int2* values, size_t size)
+bool CuckooHash::BuildTable(int2* values, size_t size)
 {
-	naive_cuckooHash(values, size, _data, _maxSize, _hashConstants);
+	int k = 0;
+	while(!naive_cuckooHash(values, size, _data, _maxSize, _hashConstants))
+	{
+		if(k == MAX_RESTARTS) return false;
+		CUDA_CALL( cudaMemset(_data, 0xFF, _maxSize * sizeof(int2)) );
+		_hashConstants[0] = rand();
+		_hashConstants[1] = rand();
+		k++;
+	}
+	return true;
 }
 
 int2* CuckooHash::GetItems(int* keys, size_t size)
