@@ -32,12 +32,6 @@ void CuckooHash::FreeMemory()
     _data = NULL;
 }
 
-int CuckooHash::genSeed()
-{
-	srand (time(NULL));
-	return rand();
-}
-
 void CuckooHash::Init(const size_t maxSize)
 {
 	_maxSize = maxSize;
@@ -46,8 +40,9 @@ void CuckooHash::Init(const size_t maxSize)
 	CUDA_CALL( cudaMalloc((void**)&_data, _maxSize * sizeof(int2)) );
 	CUDA_CALL( cudaMemset(_data, 0xFF, _maxSize * sizeof(int2)) );
 
-	_hashConstants[0] = genSeed();
-	_hashConstants[1] = genSeed();
+	srand (time(NULL));
+	_hashConstants[0] = rand();
+	_hashConstants[1] = rand();
 
 	CUDA_CHECK_ERROR("Init failed!\n");
 }

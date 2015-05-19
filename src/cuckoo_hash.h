@@ -46,9 +46,6 @@ public:
 	size_t getCurrentSize() { return _currentSize; }
 	int2* getData() { return _data; }
 	unsigned getIterationCount() { return MAX_RESTARTS; }
-
-private:
-	int genSeed();
 };
 
 void naive_cuckooHash(
@@ -64,5 +61,7 @@ int2* naive_cuckooRetrieve(
 		int2* hashMap,
 		int hashMap_size,
 		int seeds[HASH_FUNC_NO]);
+
+void testCopy_If();
 
 #endif /* CUCKOO_HASH_H_ */
