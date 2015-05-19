@@ -14,11 +14,6 @@
 #include "cuckoo_hash.h"
 #include "helpers.h"
 
-TEST(GpuCuckooTest, copy_if_test)
-{
-	testCopy_If();
-}
-
 TEST(GpuCuckooTest, cuckooHash_naive_noexception)
 {
 	int N = 1000;

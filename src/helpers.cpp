@@ -3,8 +3,6 @@
 #include <cuda_runtime_api.h>
 #include "macros.h"
 #include <vector_functions.h>
-#include <thrust/device_ptr.h>
-#include <thrust/device_vector.h>
 
 int2* GenerateRandomKeyValueData(const int N)
 {
@@ -38,6 +36,32 @@ void printData(int2* data, int N, const char* name)
 		int2 temp = data_ptr[i];
 		std::cout << "(" << temp.x << "," << temp.y << ")";
 	}
+	std::cout << std::endl;
+}
+
+void PrintStencil(thrust::device_ptr<int> stencil, int size, const char* name)
+{
+	std::cout << name << std::endl;
+	thrust::copy(stencil, stencil+size, std::ostream_iterator<int>(std::cout, ""));
+	std::cout << std::endl;
+}
+
+void PrintDeviceVector(thrust::device_vector<int2> data, const char* name)
+{
+	std::cout << name << std::endl;
+    for(size_t i = 0; i < data.size(); i++)
+    {
+    	int2 value = data[i];
+        std::cout << "(" << value.x << "," << value.y << ")";
+    }
+	std::cout << std::endl;
+}
+
+void PrintIntVector(thrust::device_vector<int> data, const char* name)
+{
+	std::cout << name << std::endl;
+    for(size_t i = 0; i < data.size(); i++)
+        std::cout << data[i] << " ";
 	std::cout << std::endl;
 }
 

@@ -64,53 +64,6 @@ struct is_true
   }
 };
 
-void PrintStencil(thrust::device_ptr<int> stencil, int size, const char* name)
-{
-	std::cout << name << std::endl;
-	thrust::copy(stencil, stencil+size, std::ostream_iterator<int>(std::cout, ""));
-	std::cout << std::endl;
-}
-
-void PrintDeviceVector(thrust::device_vector<int2> data, const char* name)
-{
-	std::cout << name << std::endl;
-    for(size_t i = 0; i < data.size(); i++)
-    {
-    	int2 value = data[i];
-        std::cout << "(" << value.x << "," << value.y << ")";
-    }
-	std::cout << std::endl;
-}
-
-void PrintIntVector(thrust::device_vector<int> data, const char* name)
-{
-	std::cout << name << std::endl;
-    for(size_t i = 0; i < data.size(); i++)
-        std::cout << data[i] << " ";
-	std::cout << std::endl;
-}
-
-void testCopy_If()
-{
-	int N = 100;
-	thrust::device_vector<int> values(N);
-	int* stencil;
-	CUDA_CALL( cudaMalloc((void**)&stencil, N*sizeof(int)) );
-	thrust::device_ptr<int> stencil_ptr(stencil);
-	thrust::device_vector<int> result(N);
-
-	for(int i=0; i<N; i++)
-	{
-		values[i] = i;
-		stencil_ptr[i] = (i%2);
-	}
-	thrust::copy_if(values.begin(), values.end(), stencil_ptr, result.data(), is_true());
-	thrust::copy_if(values.begin(), values.end(), stencil_ptr, result.data()+(N/2), is_true());
-//	PrintIntVector(result, "Result=");
-
-	CUDA_CALL( cudaFree(stencil) );
-}
-
 __host__ thrust::device_vector<int2>
 cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int seed)
 {

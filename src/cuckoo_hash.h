@@ -62,6 +62,4 @@ int2* naive_cuckooRetrieve(
 		int hashMap_size,
 		int seeds[HASH_FUNC_NO]);
 
-void testCopy_If();
-
 #endif /* CUCKOO_HASH_H_ */
