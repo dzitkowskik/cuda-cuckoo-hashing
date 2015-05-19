@@ -5,4 +5,37 @@
  *      Author: Karol Dzitkowski
  */
 
+#include "helpers.h"
+#include "macros.h"
+#include "cuckoo_hash.h"
+#include <benchmark/benchmark_api.h>
 
+static void BM_NAIVE_BUILD_HASH(benchmark::State& state)
+{
+	int N = state.range_x();
+	int2* data;
+	int* keys;
+	CuckooHash hash;
+
+	while (state.KeepRunning())
+	{
+		state.PauseTiming();
+		hash.Init(N*100);
+		data = GenerateRandomKeyValueData(N);
+		state.ResumeTiming();
+
+		// BUILD HASH
+		hash.BuildTable(data, N);
+
+		state.PauseTiming();
+		CUDA_CHECK_RETURN( cudaFree(data) );
+		hash.FreeMemory();
+		state.ResumeTiming();
+	}
+
+	long long int it_processed = state.iterations() * state.range_x();
+	state.SetItemsProcessed(it_processed);
+	state.SetBytesProcessed(it_processed * sizeof(int2));
+}
+BENCHMARK(BM_NAIVE_BUILD_HASH)
+	->ArgPair(1<<10, 10)->ArgPair(1<<10, 20)->ArgPair(1<<10, 40)->ArgPair(1<<15, 40);
