@@ -7,15 +7,15 @@
 
 #include "helpers.h"
 #include "macros.h"
-#include "cuckoo_hash.h"
+#include "naive/naive_cuckoo_hash.hpp"
 #include <benchmark/benchmark_api.h>
 
-static void BM_NAIVE_BUILD_HASH(benchmark::State& state)
+static void BM_NAIVE_BUILD_HASH_HNO_2(benchmark::State& state)
 {
 	int N = state.range_x();
 	int2* data;
 	int* keys;
-	CuckooHash hash;
+	NaiveCuckooHash<2> hash;
 
 	while (state.KeepRunning())
 	{
@@ -37,5 +37,5 @@ static void BM_NAIVE_BUILD_HASH(benchmark::State& state)
 	state.SetItemsProcessed(it_processed);
 	state.SetBytesProcessed(it_processed * sizeof(int2));
 }
-BENCHMARK(BM_NAIVE_BUILD_HASH)
+BENCHMARK(BM_NAIVE_BUILD_HASH_HNO_2)
 	->ArgPair(1<<10, 10)->ArgPair(1<<10, 20)->ArgPair(1<<10, 40)->ArgPair(1<<15, 40);

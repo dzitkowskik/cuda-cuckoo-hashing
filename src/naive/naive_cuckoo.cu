@@ -1,12 +1,14 @@
 /*
- *  naive_gpu_cuckoo.cu
+ *  naive_cuckoo.cu
  *
  *  Created on: 03-05-2015
  *      Author: Karol Dzitkowski
  */
 
-#include "cuckoo_hash.h"
+#include "cuckoo_hash.hpp"
 #include "macros.h"
+#include "constants.h"
+#include "hash_function.cuh"
 #include <random>
 #include <thrust/device_ptr.h>
 #include <thrust/copy.h>
@@ -19,39 +21,35 @@
 #define CUCKOO_HASHING_BLOCK_SIZE 64
 #define EMPTY_BUCKET_KEY 0xFFFFFFFF
 #define MAX_RETRIES 100
+#define MAX_HASH_FUNC_NO 5
 
-// hashMap_size - number of hash maps
-
-__device__ int hashFunctionDev(int value, int size, int num)
-{
-	unsigned long long int hash_value = 0xFAB011991 ^ num ^ num * value;
-	return hash_value % (size+1);
-}
-
-__global__ void cuckooRefillStencilKernel(int2* values, int values_size, int2* hashMap, int* stencil, int stencil_size, int seed)
+__global__ void cuckooRefillStencilKernel(int2* values, int values_size, int2* hashMap,
+		int* stencil, int stencil_size, unsigned seed)
 {
 	unsigned long int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= values_size) return;
 	int2 value = values[idx];
-	int hash = hashFunctionDev(value.x, stencil_size, seed);
+	int hash = hashFunction(seed, value.x, stencil_size);
 	stencil[hash] = hashMap[hash].x != EMPTY_BUCKET_KEY ? 1 : 0;
 }
 
-__global__ void cuckooFillKernel(int2* values, int values_size, int2* hashMap, int hashMap_size, int seed)
+__global__ void cuckooFillKernel(int2* values, int values_size, int2* hashMap,
+		int hashMap_size, unsigned seed)
 {
 	unsigned long int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= values_size) return;
 	int2 value = values[idx];
-	int hash = hashFunctionDev(value.x, hashMap_size, seed);
+	int hash = hashFunction(seed, value.x, hashMap_size);
 	hashMap[hash] = value;
 }
 
-__global__ void cuckooCheckKernel(int2* values, int values_size, int2* hashMap, int hashMap_size, int* result, int seed)
+__global__ void cuckooCheckKernel(int2* values, int values_size, int2* hashMap,
+		int hashMap_size, int* result, unsigned seed)
 {
 	unsigned long int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= values_size) return;
 	int2 value = values[idx];
-	int hash = hashFunctionDev(value.x, hashMap_size, seed);
+	int hash = hashFunction(seed, value.x, hashMap_size);
 	result[idx] = hashMap[hash].x != value.x ? 1 : 0;
 }
 
@@ -65,7 +63,7 @@ struct is_true
 };
 
 __host__ thrust::device_vector<int2>
-cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int seed)
+cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, unsigned seed)
 {
 	int block_size = CUCKOO_HASHING_BLOCK_SIZE;
 	int block_cnt = (size + block_size - 1) / block_size;
@@ -125,31 +123,38 @@ cuckooFillHashMap(int2* values, int size, int2* hashMap, int hashMap_size, int s
 	return result_vector;
 }
 
-bool naive_cuckooHash(int2* values, int in_size, int2* hashMap, int hashMap_size, int seeds[HASH_FUNC_NO])
+template<unsigned N>
+bool naive_cuckooHash(int2* values, int in_size, int2* hashMap, int hashMap_size, Constants<N> constants)
 {
 	int i = 1, k = 0;
-	auto collisions = cuckooFillHashMap(values, in_size, hashMap, hashMap_size, seeds[i]);
+	auto collisions = cuckooFillHashMap(values, in_size, hashMap, hashMap_size, constants.values[i]);
 	while(collisions.size() && k++ < MAX_RETRIES)
 	{
-		collisions = cuckooFillHashMap(collisions.data().get(), collisions.size(), hashMap, hashMap_size, seeds[i]);
-		i = (i+1)%HASH_FUNC_NO;
+		collisions = cuckooFillHashMap(collisions.data().get(), collisions.size(), hashMap, hashMap_size, constants.values[i]);
+		i = (i+1)%N;
 	}
 	return collisions.size() == 0;
 }
 
-__constant__ int const_seeds[HASH_FUNC_NO];
+__constant__ unsigned const_seeds[MAX_HASH_FUNC_NO];
 
-__global__ void cuckooRetrieveKernel(int* keys, int size, int2* hashMap, int hashMap_size, int2* out)
+__global__ void cuckooRetrieveKernel(
+		int* keys,
+		int size,
+		int2* hashMap,
+		int hashMap_size,
+		int2* out,
+		unsigned N)
 {
 	unsigned long int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= size) return;
 	int key = keys[idx];
-	int hash = hashFunctionDev(key, hashMap_size, const_seeds[0]);
+	int hash = hashFunction(const_seeds[0], key, hashMap_size);
 	int2 entry = hashMap[hash];
 
-	for(int i=1; i<HASH_FUNC_NO && entry.x != key; i++)
+	for(int i=1; i<N && entry.x != key; i++)
 	{
-		hash = hashFunctionDev(key, hashMap_size, const_seeds[i]);
+		hash = hashFunction(const_seeds[i], key, hashMap_size);
 		entry = hashMap[hash];
 	}
 
@@ -161,16 +166,26 @@ __global__ void cuckooRetrieveKernel(int* keys, int size, int2* hashMap, int has
 	out[idx] = entry;
 }
 
-int2* naive_cuckooRetrieve(int* keys, int size, int2* hashMap, int hashMap_size, int seeds[HASH_FUNC_NO])
+template<unsigned N>
+int2* naive_cuckooRetrieve(int* keys, int size, int2* hashMap, int hashMap_size, Constants<N> constants)
 {
 	int block_size = CUCKOO_HASHING_BLOCK_SIZE;
 	int block_cnt = (size + block_size - 1) / block_size;
 	int2* result;
 	CUDA_CALL( cudaMalloc((void**)&result, size*sizeof(int2)) );
-	cudaMemcpyToSymbol(const_seeds, seeds, HASH_FUNC_NO*sizeof(int));
-	cuckooRetrieveKernel<<<block_size, block_cnt>>>(keys, size, hashMap, hashMap_size, result);
+	cudaMemcpyToSymbol(const_seeds, &constants.values, N*sizeof(unsigned));
+	cuckooRetrieveKernel<<<block_size, block_cnt>>>(keys, size, hashMap, hashMap_size, result, N);
 	cudaDeviceSynchronize();
 
 	return result;
 }
 
+template bool naive_cuckooHash<2>(int2*, int, int2*, int, Constants<2>);
+template bool naive_cuckooHash<3>(int2*, int, int2*, int, Constants<3>);
+template bool naive_cuckooHash<4>(int2*, int, int2*, int, Constants<4>);
+template bool naive_cuckooHash<5>(int2*, int, int2*, int, Constants<5>);
+
+template int2* naive_cuckooRetrieve<2>(int*, int, int2*, int, Constants<2>);
+template int2* naive_cuckooRetrieve<3>(int*, int, int2*, int, Constants<3>);
+template int2* naive_cuckooRetrieve<4>(int*, int, int2*, int, Constants<4>);
+template int2* naive_cuckooRetrieve<5>(int*, int, int2*, int, Constants<5>);

@@ -11,7 +11,7 @@
 #include <vector_functions.h>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include "cuckoo_hash.h"
+#include "naive/naive_cuckoo_hash.hpp"
 #include "helpers.h"
 
 TEST(GpuCuckooTest, cuckooHash_naive_noexception)
@@ -19,9 +19,8 @@ TEST(GpuCuckooTest, cuckooHash_naive_noexception)
 	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 
-	CuckooHash hash;
+	NaiveCuckooHash<2> hash;
 	hash.Init(N*100);
-
 	hash.BuildTable(data, N);
 
 	CUDA_CHECK_RETURN( cudaFree(data) );
@@ -32,7 +31,7 @@ TEST(GpuCuckooTest, cuckooHash_naive_storeSucceeded)
 	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 
-	CuckooHash hash;
+	NaiveCuckooHash<2> hash;
 	hash.Init(N*20);
 
 	EXPECT_TRUE( hash.BuildTable(data, N) );
@@ -46,7 +45,7 @@ TEST(GpuCuckooTest, cuckooHash_naive_storeAndretrieve)
 	auto data = GenerateRandomKeyValueData(N);
 	auto keys = getKeys(data, N);
 
-	CuckooHash hash;
+	NaiveCuckooHash<2> hash;
 	hash.Init(N*100);
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);
