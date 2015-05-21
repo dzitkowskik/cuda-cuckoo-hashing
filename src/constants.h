@@ -10,9 +10,6 @@
 
 #include <stdlib.h>
 
-#define HASH_FUNC_PRIME_DIVISOR 4294967291u
-#define HASH_FUNC_SALT 0xFAB011991
-
 template<unsigned N>
 struct Constants
 {

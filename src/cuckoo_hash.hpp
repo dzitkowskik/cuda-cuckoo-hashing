@@ -12,6 +12,15 @@
 #include <cuda_runtime_api.h>
 #include <constants.h>
 
+
+// DEFINES
+#define CUCKOO_HASHING_BLOCK_SIZE 64	// BLOCK SIZE USED BY CUCKOO HASHING KERNELS
+#define EMPTY_BUCKET_KEY 0xFFFFFFFF		// KEY USED FOR EMPTY BUCKETS
+#define MAX_RETRIES 10					// HOW MANY TIMES WE SHOULD CHECK ALL BUCKETS
+#define MAX_HASH_FUNC_NO 5				// MAX AMOUNT OF HASH FUNCTIONS
+
+const int2 __EMPTY_BUCKET = { (int)EMPTY_BUCKET_KEY, (int)EMPTY_BUCKET_KEY };
+
 using namespace std;
 
 template<unsigned hashFuncCount>

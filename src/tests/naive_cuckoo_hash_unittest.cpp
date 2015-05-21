@@ -1,5 +1,5 @@
 /*
- * gpu_cuckoo_unittest.cpp
+ *  naive_cuckoo_hash_unittest.cpp
  *
  *  Created on: 01-05-2015
  *      Author: Karol Dzitkowski
@@ -13,6 +13,13 @@
 #include <thrust/device_vector.h>
 #include "naive/naive_cuckoo_hash.hpp"
 #include "helpers.h"
+
+TEST(GpuCuckooTest, empty_bucket_value)
+{
+	int2 empty_bucket = __EMPTY_BUCKET;
+	EXPECT_EQ(-1, empty_bucket.x);
+	EXPECT_EQ(-1, empty_bucket.y);
+}
 
 TEST(GpuCuckooTest, cuckooHash_naive_noexception)
 {

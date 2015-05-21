@@ -18,11 +18,6 @@
 #include <thrust/device_vector.h>
 #include <cuda_runtime_api.h>
 
-#define CUCKOO_HASHING_BLOCK_SIZE 64
-#define EMPTY_BUCKET_KEY 0xFFFFFFFF
-#define MAX_RETRIES 100
-#define MAX_HASH_FUNC_NO 5
-
 __global__ void cuckooRefillStencilKernel(int2* values, int values_size, int2* hashMap,
 		int* stencil, int stencil_size, unsigned seed)
 {
