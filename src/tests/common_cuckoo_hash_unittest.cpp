@@ -11,27 +11,27 @@
 #include <vector_functions.h>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include "naive/naive_cuckoo_hash.cuh"
+#include "common/common_cuckoo_hash.cuh"
 #include "helpers.h"
 
-TEST(GpuCuckooTest, cuckooHash_NAIVE_noexception)
+TEST(GpuCuckooTest, cuckooHash_COMMON_noexception)
 {
 	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 
-	NaiveCuckooHash<2> hash;
+	CommonCuckooHash<2> hash;
 	hash.Init(N*100);
 	hash.BuildTable(data, N);
 
 	CUDA_CHECK_RETURN( cudaFree(data) );
 }
 
-TEST(GpuCuckooTest, cuckooHash_NAIVE_storeSucceeded)
+TEST(GpuCuckooTest, cuckooHash_COMMON_storeSucceeded)
 {
 	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 
-	NaiveCuckooHash<2> hash;
+	CommonCuckooHash<2> hash;
 	hash.Init(N*20);
 
 	EXPECT_TRUE( hash.BuildTable(data, N) );
@@ -39,13 +39,13 @@ TEST(GpuCuckooTest, cuckooHash_NAIVE_storeSucceeded)
 	CUDA_CHECK_RETURN( cudaFree(data) );
 }
 
-TEST(GpuCuckooTest, cuckooHash_NAIVE_storeAndretrieve)
+TEST(GpuCuckooTest, cuckooHash_COMMON_storeAndretrieve)
 {
 	int N = 1000;
 	auto data = GenerateRandomKeyValueData(N);
 	auto keys = getKeys(data, N);
 
-	NaiveCuckooHash<2> hash;
+	CommonCuckooHash<2> hash;
 	hash.Init(N*100);
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);

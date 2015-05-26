@@ -10,6 +10,8 @@
 
 #include "cuckoo_hash.hpp"
 
+#define DEFAULT_STASH_SIZE 777
+
 template<unsigned N>
 bool common_cuckooHash(
 		int2* values,
@@ -32,25 +34,22 @@ template<unsigned N>
 class CommonCuckooHash : public CuckooHash<N>
 {
 private:
-	static const unsigned DEFAULT_STASH_SIZE  = 16384;
-	size_t _stashSize;
-	size_t _hashSize;
+	int _stashSize;
 public:
 	CommonCuckooHash() : CuckooHash<N>()
 	{
-		_stashSize = DEFAULT_STASH_SIZE;
-		_hashSize = this->_maxSize - _stashSize;
+		this->_stashSize = DEFAULT_STASH_SIZE;
 	}
 	virtual ~CommonCuckooHash() {}
 	virtual bool BuildTable(int2* values, size_t size)
 	{
 		int k = 0;
-
+		int hashSize = this->_maxSize-this->_stashSize;
 		while(!common_cuckooHash(
 				values,
 				size,
 				this->_data,
-				this->_hashSize,
+				hashSize,
 				this->_hashConstants,
 				this->_stashSize))
 		{
@@ -64,11 +63,12 @@ public:
 
 	virtual int2* GetItems(int* keys, size_t size)
 	{
+		int hashSize = this->_maxSize-this->_stashSize;
 		return common_cuckooRetrieve(
 				keys,
 				size,
 				this->_data,
-				this->_hashSize,
+				hashSize,
 				this->_hashConstants,
 				this->_stashSize);
 	}

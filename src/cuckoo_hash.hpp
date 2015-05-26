@@ -31,8 +31,8 @@ public:
 	static const unsigned MAX_GRID_DIM_SIZE  = 16384;
 
 protected:
-	size_t _maxSize;
-	size_t _currentSize;
+	int _maxSize;
+	int _currentSize;
 	Constants<hashFuncCount> _hashConstants;
 	int2* _data;
 
@@ -45,10 +45,9 @@ public:
 	virtual bool BuildTable(int2* values, size_t size) = 0;
 	virtual int2* GetItems(int* keys, size_t size) = 0;
 
-	size_t getMaxSize() { return _maxSize; }
-	size_t getCurrentSize() { return _currentSize; }
+	int getMaxSize() { return _maxSize; }
+	int getCurrentSize() { return _currentSize; }
 
-private:
 	static dim3 GetGrid(size_t size);
 };
 

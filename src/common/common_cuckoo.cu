@@ -103,7 +103,7 @@ union entry
 
 template<unsigned N>
 __device__ bool devInsertElem(
-		unsigned long long* hashMap,
+		int2* hashMap,
 		const int hashMap_size,
 		const Constants<N> constants,
 		const int stash_size,
@@ -111,11 +111,15 @@ __device__ bool devInsertElem(
 		int2 value)
 {
 	unsigned idx = hashFunction(constants.values[0], value.x, hashMap_size);
-	entry e { value };
+	entry e;
+	e.value = value;
+
+	unsigned long long int* slot;
 
 	for(unsigned i = 1; i <= max_iters; i++)
 	{
-		e.hidden = atomicExch(&hashMap[idx], e.hidden);
+		slot = reinterpret_cast<unsigned long long int*>(hashMap + idx);
+		e.hidden = atomicExch(slot, e.hidden);
 		if(e.value.x == EMPTY_BUCKET_KEY) break;
 		idx = next_loc_cuckoo(constants, hashMap_size, e.value.x, idx);
 	}
@@ -123,8 +127,8 @@ __device__ bool devInsertElem(
 	if (e.value.x != EMPTY_BUCKET_KEY)
 	{
 		idx = hashFunction(constants.values[0], e.value.x, stash_size);
-		unsigned long long int* stash = hashMap + hashMap_size;
-		auto replaced = atomicCAS(stash + idx, EMPTY_BUCKET, e.hidden);
+		slot = (unsigned long long int*)(hashMap + (hashMap_size + idx));
+		auto replaced = atomicCAS(slot, EMPTY_BUCKET, e.hidden);
 		if (replaced != EMPTY_BUCKET) return false;
 	}
 
@@ -135,7 +139,7 @@ template<unsigned N>
 __global__ void insert(
 		const int2* keys,
 		const int count,
-		const int2* hashMap,
+		int2* hashMap,
 		const int hashMap_size,
 		const Constants<N> constants,
 		const int stash_size,
@@ -212,11 +216,15 @@ int2* common_cuckooRetrieve(
 	return d_result;
 }
 
+template bool common_cuckooHash<2>(int2*, int, int2*, int, Constants<2>, int);
+template bool common_cuckooHash<3>(int2*, int, int2*, int, Constants<3>, int);
+template bool common_cuckooHash<4>(int2*, int, int2*, int, Constants<4>, int);
+template bool common_cuckooHash<5>(int2*, int, int2*, int, Constants<5>, int);
 
-
-
-
-
+template int2* common_cuckooRetrieve<2>(int*, int, int2*, int, Constants<2>, int);
+template int2* common_cuckooRetrieve<3>(int*, int, int2*, int, Constants<3>, int);
+template int2* common_cuckooRetrieve<4>(int*, int, int2*, int, Constants<4>, int);
+template int2* common_cuckooRetrieve<5>(int*, int, int2*, int, Constants<5>, int);
 
 
 
