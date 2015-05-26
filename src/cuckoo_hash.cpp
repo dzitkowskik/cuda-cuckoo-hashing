@@ -11,7 +11,7 @@
 #include <time.h>
 
 template<unsigned N>
-dim3 CuckooHash<N>::getGrid(size_t size)
+dim3 CuckooHash<N>::GetGrid(size_t size)
 {
 	auto block_cnt = (size + DEFAULT_BLOCK_SIZE-1) / DEFAULT_BLOCK_SIZE;
     dim3 grid( block_cnt );
@@ -48,10 +48,10 @@ void CuckooHash<N>::Init(const size_t maxSize)
 	CUDA_CHECK_ERROR("Init failed!\n");
 }
 
-template dim3 CuckooHash<2>::getGrid(size_t size);
-template dim3 CuckooHash<3>::getGrid(size_t size);
-template dim3 CuckooHash<4>::getGrid(size_t size);
-template dim3 CuckooHash<5>::getGrid(size_t size);
+template dim3 CuckooHash<2>::GetGrid(size_t size);
+template dim3 CuckooHash<3>::GetGrid(size_t size);
+template dim3 CuckooHash<4>::GetGrid(size_t size);
+template dim3 CuckooHash<5>::GetGrid(size_t size);
 
 template void CuckooHash<2>::FreeMemory();
 template void CuckooHash<3>::FreeMemory();

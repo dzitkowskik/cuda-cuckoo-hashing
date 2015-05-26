@@ -11,7 +11,7 @@
 #include <vector_functions.h>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include "naive/naive_cuckoo_hash.hpp"
+#include "naive/naive_cuckoo_hash.cuh"
 #include "helpers.h"
 
 TEST(GpuCuckooTest, empty_bucket_value)

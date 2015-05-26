@@ -16,21 +16,21 @@
 // DEFINES
 #define CUCKOO_HASHING_BLOCK_SIZE 64	// BLOCK SIZE USED BY CUCKOO HASHING KERNELS
 #define EMPTY_BUCKET_KEY 0xFFFFFFFF		// KEY USED FOR EMPTY BUCKETS
+#define EMPTY_BUCKET 0xFFFFFFFFFFFFFFFF	// KEY USED FOR EMPTY BUCKETS
 #define MAX_RETRIES 10					// HOW MANY TIMES WE SHOULD CHECK ALL BUCKETS
 #define MAX_HASH_FUNC_NO 5				// MAX AMOUNT OF HASH FUNCTIONS
-
-const int2 __EMPTY_BUCKET = { (int)EMPTY_BUCKET_KEY, (int)EMPTY_BUCKET_KEY };
 
 using namespace std;
 
 template<unsigned hashFuncCount>
 class CuckooHash
 {
-protected:
+public:
 	static const unsigned MAX_RESTARTS = 7;
-	static const unsigned DEFAULT_BLOCK_SIZE = 64;
+	static const unsigned DEFAULT_BLOCK_SIZE = CUCKOO_HASHING_BLOCK_SIZE;
 	static const unsigned MAX_GRID_DIM_SIZE  = 16384;
 
+protected:
 	size_t _maxSize;
 	size_t _currentSize;
 	Constants<hashFuncCount> _hashConstants;
@@ -49,7 +49,7 @@ public:
 	size_t getCurrentSize() { return _currentSize; }
 
 private:
-	dim3 getGrid(size_t size);
+	static dim3 GetGrid(size_t size);
 };
 
 #endif /* CUCKOO_HASH_H_ */

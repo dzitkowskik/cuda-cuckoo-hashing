@@ -9,6 +9,7 @@
 #include "macros.h"
 #include "constants.h"
 #include "hash_function.cuh"
+#include "naive_cuckoo_hash.cuh"
 #include <random>
 #include <thrust/device_ptr.h>
 #include <thrust/copy.h>
