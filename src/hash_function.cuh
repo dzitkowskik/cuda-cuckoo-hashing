@@ -18,4 +18,12 @@ unsigned hashFunction(const unsigned constant, const int key, const size_t size)
 	return (value % HASH_FUNC_PRIME_DIVISOR) % size;
 }
 
+inline __device__ __host__
+unsigned bucketHashFunction(
+		const unsigned c0, const unsigned c1, const int key, const size_t size)
+{
+	unsigned long long int value = (c0 + c1*key) % HASH_FUNC_PRIME_DIVISOR;
+	return value % size;
+}
+
 #endif /* HASH_FUNCTION_CUH_ */
