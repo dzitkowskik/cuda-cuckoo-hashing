@@ -92,8 +92,8 @@ TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Medium)
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);
 
-//	printData(data, N, "Expected:");
-//	printData(result, N, "Actual:");
+	printData(data, N, "Expected:");
+	printData(result, N, "Actual:");
 
 	EXPECT_TRUE( compareData(data, result, N) );
 

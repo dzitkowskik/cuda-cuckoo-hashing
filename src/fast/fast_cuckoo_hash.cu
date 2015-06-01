@@ -125,43 +125,60 @@ __global__ void insertKernel(
 {
 	volatile unsigned i, hash;
 	unsigned idx = threadIdx.x;
-	unsigned idx2 = idx + blockDim.x;
+	unsigned idx2 = threadIdx.x + blockDim.x;
 	__shared__ int2 s[PART_HASH_MAP_SIZE];
 
 	// GET DATA
 	const int2* values = valuesArray + starts[arrId];
 	const int size = counts[arrId];
-	int2* hashMap_part = hashMap + (bucket_size * arrId);
+	volatile const int part = bucket_size * arrId;
+	int2* hashMap_part = hashMap + part;
+	int2 old_value;
+	int2 value;
+	if(idx < size) value = values[idx];
 
 	// COPY HASH MAP TO SHARED MEMORY
 	s[idx] = hashMap_part[idx];
-	if(idx2 < bucket_size) s[idx2] = hashMap_part[idx2];
-	__syncthreads();
-
-	if(idx < size)
+	if(idx2 < bucket_size)
 	{
-		int2 value = values[idx];
-		int2 old_value;
-		for(i = 0; i <= max_iters; i++)
+		s[idx2] = hashMap_part[idx2];
+	}
+	__syncthreads();
+	bool a = true;
+	#pragma unroll
+	for(i = 0; a && (i<=MAX_RETRIES); i++)
+	{
+		if(idx < size)
 		{
 			hash = hashFunction(constants.values[i%3], value.x, bucket_size);
 			old_value = s[hash];	// read old value
-			__syncthreads();
-			s[hash] = value;			// write new value
-			__syncthreads();
-			if(value.x == s[hash].x)	// check for success
+		}
+		__syncthreads();
+		if(idx < size) s[hash] = value;			// write new value
+		__syncthreads();
+		if(idx < size && value.x == s[hash].x)	// check for success
+		{
+			if(old_value.x == EMPTY_BUCKET_KEY)
 			{
-				if(old_value.x == EMPTY_BUCKET_KEY) break;
-				else value = old_value;
+				a = false;
+			}
+			else
+			{
+				value = old_value;
 			}
 		}
-		if(i >= max_iters) *failure = true;
+	}
+	if(idx < size && a)
+	{
+		*failure = true;
 	}
 
 	// COPY SHARED MEMORY TO HASH MAP
 	__syncthreads();
-	if(idx2 < bucket_size) hashMap_part[idx2] = s[idx2];
+	if(idx2 < bucket_size)
+		hashMap_part[idx2] = s[idx2];
 	hashMap_part[idx] = s[idx];
+	__syncthreads();
 }
 
 bool fast_cuckooHash(
@@ -247,13 +264,14 @@ __global__ void retrieveKernel(
 		int2* out)
 {
 	unsigned idx = threadIdx.x;
+	const int size = counts[arrId];
+	if(idx >= size) return;
 
 	// GET DATA
-	const int2 value = (buckets + starts[arrId])[idx];
-	const int size = counts[arrId];
-	int2* hashMap_part = hashMap + (bucket_size * arrId);
-
-	if(idx >= size) return;
+	const int2* values = buckets + starts[arrId];
+	const int2 value = values[idx];
+	volatile int part = bucket_size * arrId;
+	int2* hashMap_part = hashMap + part;
 	int2 entry;
 	volatile unsigned hash;
 
@@ -265,10 +283,15 @@ __global__ void retrieveKernel(
 		if(entry.x == value.x) break;
 	}
 
-	if(entry.x != value.x) entry = int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
+	if(entry.x == value.x)
+		out[value.y] = entry;
+	else
+		out[value.y] = int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
 
 	// PLACE IT ON OLD POSITION
-	out[value.y] = entry;
+//	out[value.y] = entry;
+//	if(entry.x == EMPTY_BUCKET_KEY)
+
 }
 
 int2* fast_cuckooRetrieve(
@@ -308,6 +331,7 @@ int2* fast_cuckooRetrieve(
 	cudaDeviceSynchronize();
 	bool splitResult = splitToBuckets(
 			result, size, bucket_constants, bucket_cnt, block_size, starts, counts, buckets);
+	CUDA_CALL( cudaMemset(result, 0xff, size*sizeof(int2)) );
 
 	// RETRIEVE VALUES
 	if(splitResult)
