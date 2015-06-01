@@ -26,7 +26,7 @@ template<unsigned hashFuncCount>
 class CuckooHash
 {
 public:
-	static const unsigned MAX_RESTARTS = 7;
+	static const unsigned MAX_RESTARTS = 10;
 	static const unsigned DEFAULT_BLOCK_SIZE = CUCKOO_HASHING_BLOCK_SIZE;
 	static const unsigned MAX_GRID_DIM_SIZE  = 16384;
 

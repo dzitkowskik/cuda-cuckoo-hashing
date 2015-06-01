@@ -67,7 +67,7 @@ __global__ void copyKernel(
 }
 
 bool splitToBuckets(
-		int2* values,
+		const int2* values,
 		const int size,
 		const Constants<2> constants,
 		const int bucket_cnt,
@@ -123,10 +123,10 @@ __global__ void insertKernel(
 		const unsigned max_iters,
 		bool* failure)
 {
-	unsigned i, hash;
+	volatile unsigned i, hash;
 	unsigned idx = threadIdx.x;
 	unsigned idx2 = idx + blockDim.x;
-	extern __shared__ int2 s[];
+	__shared__ int2 s[PART_HASH_MAP_SIZE];
 
 	// GET DATA
 	const int2* values = valuesArray + starts[arrId];
@@ -141,10 +141,11 @@ __global__ void insertKernel(
 	if(idx < size)
 	{
 		int2 value = values[idx];
-		for(i = 1; i <= max_iters; i++)
+		int2 old_value;
+		for(i = 0; i <= max_iters; i++)
 		{
 			hash = hashFunction(constants.values[i%3], value.x, bucket_size);
-			int2 old_value = s[hash];	// read old value
+			old_value = s[hash];	// read old value
 			__syncthreads();
 			s[hash] = value;			// write new value
 			__syncthreads();
@@ -154,17 +155,17 @@ __global__ void insertKernel(
 				else value = old_value;
 			}
 		}
-		if(i == max_iters) *failure = true;
+		if(i >= max_iters) *failure = true;
 	}
 
 	// COPY SHARED MEMORY TO HASH MAP
 	__syncthreads();
-	if(idx2 < bucket_size) s[idx2] = hashMap_part[idx2];
+	if(idx2 < bucket_size) hashMap_part[idx2] = s[idx2];
 	hashMap_part[idx] = s[idx];
 }
 
 bool fast_cuckooHash(
-		int2* values,
+		const int2* values,
 		const int in_size,
 		int2* hashMap,
 		const int bucket_cnt,
@@ -206,13 +207,13 @@ bool fast_cuckooHash(
 		const int shared_mem_size = PART_HASH_MAP_SIZE * sizeof(int2);
 		for(int i=0; i<bucket_cnt; i++)
 		{
-			insertKernel<<<block_size, 1, shared_mem_size, streams[i]>>>(
+			insertKernel<<<1, block_size, 0, streams[i]>>>(
 					values, starts, counts, i, hashMap,
 					PART_HASH_MAP_SIZE, constants, max_iters, d_failure);
 		}
 		cudaDeviceSynchronize();
 		CUDA_CALL( cudaMemcpy(&h_failure, d_failure, sizeof(bool), cudaMemcpyDeviceToHost) );
-	} else return false;
+	} else return true;
 
 	// FREE MEMORY
 	CUDA_CALL( cudaFree(starts) );
@@ -254,9 +255,9 @@ __global__ void retrieveKernel(
 
 	if(idx >= size) return;
 	int2 entry;
-	unsigned hash;
+	volatile unsigned hash;
 
-	#pragma unroll
+	//#pragma unroll
 	for(int i = 0; i < 3; i++)
 	{
 		hash = hashFunction(constants.values[i], value.x, bucket_size);
@@ -286,9 +287,16 @@ int2* fast_cuckooRetrieve(
 	int2 *result, *buckets;
 	unsigned int *starts, *counts;
 	CUDA_CALL( cudaMalloc((void**)&result, size*sizeof(int2)) );
-	CUDA_CALL( cudaMalloc((void**)&starts, bucket_cnt*sizeof(unsigned int)) );
-	CUDA_CALL( cudaMalloc((void**)&counts, bucket_cnt*sizeof(unsigned int)) );
+	CUDA_CALL( cudaMemset(result, 0xff, size*sizeof(int2)) );
+
 	CUDA_CALL( cudaMalloc((void**)&buckets, size*sizeof(int2)) );
+	CUDA_CALL( cudaMemset(buckets, 0xff, size*sizeof(int2)) );
+
+	CUDA_CALL( cudaMalloc((void**)&starts, bucket_cnt*sizeof(unsigned int)) );
+	CUDA_CALL( cudaMemset(starts, 0, bucket_cnt*sizeof(unsigned int)) );
+
+	CUDA_CALL( cudaMalloc((void**)&counts, bucket_cnt*sizeof(unsigned int)) );
+	CUDA_CALL( cudaMemset(counts, 0, bucket_cnt*sizeof(unsigned int)) );
 
 	// CREATE STREAMS
 	cudaStream_t* streams = new cudaStream_t[bucket_cnt];
@@ -306,7 +314,7 @@ int2* fast_cuckooRetrieve(
 	{
 		for(int i=0; i<bucket_cnt; i++)
 		{
-			retrieveKernel<<<block_size, 1, 0, streams[i]>>>(
+			retrieveKernel<<<1, block_size, 0, streams[i]>>>(
 					buckets, hashMap, starts, counts, i, PART_HASH_MAP_SIZE, constants, result);
 		}
 		cudaDeviceSynchronize();

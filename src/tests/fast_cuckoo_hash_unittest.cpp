@@ -14,45 +14,107 @@
 #include "fast/fast_cuckoo_hash.cuh"
 #include "helpers.h"
 
+//TEST(GpuCuckooTest, cuckooHash_FAST_noexception)
+//{
+//	int N = 10000;
+//	auto data = GenerateRandomKeyValueData(N);
+//
+//	FastCuckooHash hash;
+//	hash.Init(N*5);
+//	hash.BuildTable(data, N);
+//
+//	CUDA_CHECK_RETURN( cudaFree(data) );
+//}
+//
+//TEST(GpuCuckooTest, cuckooHash_FAST_storeSucceeded)
+//{
+//	int N = 1000;
+//	auto data = GenerateRandomKeyValueData(N);
+//
+//	FastCuckooHash hash;
+//	hash.Init(N*5);
+//
+//	EXPECT_TRUE( hash.BuildTable(data, N) );
+//
+//	CUDA_CHECK_RETURN( cudaFree(data) );
+//}
 
-TEST(GpuCuckooTest, cuckooHash_FAST_noexception)
+TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Tiny)
 {
-	int N = 10000;
+	int N = 50;
 	auto data = GenerateRandomKeyValueData(N);
+	auto keys = getKeys(data, N);
 
 	FastCuckooHash hash;
-	hash.Init(N*10);
+	hash.Init(N*16);
 	hash.BuildTable(data, N);
+	auto result = hash.GetItems(keys, N);
+
+	printData(data, N, "Expected:");
+	printData(result, N, "Actual:");
+
+	EXPECT_TRUE( compareData(data, result, N) );
 
 	CUDA_CHECK_RETURN( cudaFree(data) );
+	CUDA_CHECK_RETURN( cudaFree(keys) );
+	CUDA_CHECK_RETURN( cudaFree(result) );
 }
 
-TEST(GpuCuckooTest, cuckooHash_FAST_storeSucceeded)
+TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Small)
 {
-	int N = 10000;
+	int N = 100;
 	auto data = GenerateRandomKeyValueData(N);
+	auto keys = getKeys(data, N);
 
 	FastCuckooHash hash;
-	hash.Init(N*5);
+	hash.Init(N*6);
+	hash.BuildTable(data, N);
+	auto result = hash.GetItems(keys, N);
 
-	EXPECT_TRUE( hash.BuildTable(data, N) );
+	printData(data, N, "Expected:");
+	printData(result, N, "Actual:");
+
+	EXPECT_TRUE( compareData(data, result, N) );
 
 	CUDA_CHECK_RETURN( cudaFree(data) );
+	CUDA_CHECK_RETURN( cudaFree(keys) );
+	CUDA_CHECK_RETURN( cudaFree(result) );
 }
 
-TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve)
+TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Medium)
+{
+	int N = 1000;
+	auto data = GenerateRandomKeyValueData(N);
+	auto keys = getKeys(data, N);
+
+	FastCuckooHash hash;
+	hash.Init(N*6);
+	hash.BuildTable(data, N);
+	auto result = hash.GetItems(keys, N);
+
+//	printData(data, N, "Expected:");
+//	printData(result, N, "Actual:");
+
+	EXPECT_TRUE( compareData(data, result, N) );
+
+	CUDA_CHECK_RETURN( cudaFree(data) );
+	CUDA_CHECK_RETURN( cudaFree(keys) );
+	CUDA_CHECK_RETURN( cudaFree(result) );
+}
+
+TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Large)
 {
 	int N = 10000;
 	auto data = GenerateRandomKeyValueData(N);
 	auto keys = getKeys(data, N);
 
 	FastCuckooHash hash;
-	hash.Init(N*5);
+	hash.Init(N*6);
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);
 
-//	printData(data, N, "Actual:");
-//	printData(result, N, "Expected:");
+//	printData(data, N, "Expected:");
+//	printData(result, N, "Actual:");
 
 	EXPECT_TRUE( compareData(data, result, N) );
 
