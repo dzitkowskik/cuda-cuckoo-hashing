@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <cuda_runtime_api.h>
 #include <constants.h>
-
+#include "macros.h"
 
 // DEFINES
 #define CUCKOO_HASHING_BLOCK_SIZE 64	// BLOCK SIZE USED BY CUCKOO HASHING KERNELS

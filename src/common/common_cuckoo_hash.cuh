@@ -45,7 +45,7 @@ public:
 	{
 		int k = 0;
 		int hashSize = this->_maxSize-this->_stashSize;
-		while(!common_cuckooHash(
+		while(common_cuckooHash(
 				values,
 				size,
 				this->_data,

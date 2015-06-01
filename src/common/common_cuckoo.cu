@@ -129,10 +129,10 @@ __device__ bool devInsertElem(
 		idx = hashFunction(constants.values[0], e.value.x, stash_size);
 		slot = (unsigned long long int*)(hashMap + (hashMap_size + idx));
 		auto replaced = atomicCAS(slot, EMPTY_BUCKET, e.hidden);
-		if (replaced != EMPTY_BUCKET) return false;
+		if (replaced != EMPTY_BUCKET) return true;
 	}
 
-	return true;
+	return false;
 }
 
 template<unsigned N>
@@ -149,13 +149,14 @@ __global__ void insert(
 	unsigned long long int idx = threadIdx.x + blockIdx.x * blockDim.x +
 		                          blockIdx.y * blockDim.x * gridDim.x;
 	if(idx >= count) return;
-	*failure = devInsertElem<N>(
+	bool result = devInsertElem<N>(
 			hashMap,
 			hashMap_size,
 			constants,
 			stash_size,
 			max_iters,
 			keys[idx]);
+	if(result) *failure = true;
 }
 
 template<unsigned N>
@@ -172,6 +173,7 @@ bool common_cuckooHash(
 	bool h_result;
 
 	CUDA_CALL( cudaMalloc((void**)&d_result, sizeof(bool)) );
+	CUDA_CALL( cudaMemset(d_result, 0, sizeof(bool)) );
 	int blockSize = CuckooHash<N>::DEFAULT_BLOCK_SIZE;
 	int maxIters = MAX_RETRIES * N;
 
@@ -187,6 +189,7 @@ bool common_cuckooHash(
 
 	CUDA_CALL( cudaMemcpy(&h_result, d_result, sizeof(bool), cudaMemcpyDeviceToHost) );
 	CUDA_CALL( cudaFree(d_result) );
+
 	return h_result;
 }
 
