@@ -14,30 +14,30 @@
 #include "fast/fast_cuckoo_hash.cuh"
 #include "helpers.h"
 
-//TEST(GpuCuckooTest, cuckooHash_FAST_noexception)
-//{
-//	int N = 10000;
-//	auto data = GenerateRandomKeyValueData(N);
-//
-//	FastCuckooHash hash;
-//	hash.Init(N*5);
-//	hash.BuildTable(data, N);
-//
-//	CUDA_CHECK_RETURN( cudaFree(data) );
-//}
-//
-//TEST(GpuCuckooTest, cuckooHash_FAST_storeSucceeded)
-//{
-//	int N = 1000;
-//	auto data = GenerateRandomKeyValueData(N);
-//
-//	FastCuckooHash hash;
-//	hash.Init(N*5);
-//
-//	EXPECT_TRUE( hash.BuildTable(data, N) );
-//
-//	CUDA_CHECK_RETURN( cudaFree(data) );
-//}
+TEST(GpuCuckooTest, cuckooHash_FAST_noexception)
+{
+	int N = 10000;
+	auto data = GenerateRandomKeyValueData(N);
+
+	FastCuckooHash hash;
+	hash.Init(N*5);
+	hash.BuildTable(data, N);
+
+	CUDA_CHECK_RETURN( cudaFree(data) );
+}
+
+TEST(GpuCuckooTest, cuckooHash_FAST_storeSucceeded)
+{
+	int N = 1000;
+	auto data = GenerateRandomKeyValueData(N);
+
+	FastCuckooHash hash;
+	hash.Init(N*5);
+
+	EXPECT_TRUE( hash.BuildTable(data, N) );
+
+	CUDA_CHECK_RETURN( cudaFree(data) );
+}
 
 TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Tiny)
 {
@@ -89,11 +89,11 @@ TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Medium)
 
 	FastCuckooHash hash;
 	hash.Init(N*6);
-	hash.BuildTable(data, N);
+	EXPECT_TRUE( hash.BuildTable(data, N) );
 	auto result = hash.GetItems(keys, N);
 
-	printData(data, N, "Expected:");
-	printData(result, N, "Actual:");
+//	printData(data, N, "Expected:");
+//	printData(result, N, "Actual:");
 
 	EXPECT_TRUE( compareData(data, result, N) );
 

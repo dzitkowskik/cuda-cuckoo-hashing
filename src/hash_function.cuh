@@ -9,13 +9,15 @@
 #define HASH_FUNCTION_CUH_
 
 #define HASH_FUNC_PRIME_DIVISOR 4294967291u
+#define HASH_FUNC_PRIME_DIVISOR_2 1900813u
 #define HASH_FUNC_SALT 0xFAB011991
 
 inline __device__ __host__
 unsigned hashFunction(const unsigned constant, const int key, const size_t size)
 {
-	unsigned long long int value = (constant ^ key) + HASH_FUNC_SALT;
-	return (value % HASH_FUNC_PRIME_DIVISOR) % size;
+	unsigned long long int c0 = constant ^ HASH_FUNC_SALT;
+	unsigned long long int c1 = constant * key;
+	return ((c0 + c1) % HASH_FUNC_PRIME_DIVISOR_2) % size;
 }
 
 inline __device__ __host__
