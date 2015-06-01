@@ -82,8 +82,12 @@ bool splitToBuckets(
 	bool h_failure;
 	bool* d_failure;
 	unsigned int* d_offsets;
+
 	CUDA_CALL( cudaMalloc((void**)&d_offsets, size*sizeof(unsigned int)) );
+	CUDA_CALL( cudaMemset(d_offsets, 0, size*sizeof(unsigned int)) );
+
 	CUDA_CALL( cudaMalloc((void**)&d_failure, sizeof(bool)) );
+	CUDA_CALL( cudaMemset(d_failure, 0, sizeof(bool)) );
 
 	divideKernel<<<grid, blockSize>>>(
 			values, size, constants, counts,
@@ -182,9 +186,16 @@ bool fast_cuckooHash(
 
 	// ALLOCATE MEMORY
 	CUDA_CALL( cudaMalloc((void**)&starts, bucket_cnt*sizeof(unsigned int)) );
+	CUDA_CALL( cudaMemset(starts, 0, bucket_cnt*sizeof(unsigned int)) );
+
 	CUDA_CALL( cudaMalloc((void**)&counts, bucket_cnt*sizeof(unsigned int)) );
+	CUDA_CALL( cudaMemset(counts, 0, bucket_cnt*sizeof(unsigned int)) );
+
 	CUDA_CALL( cudaMalloc((void**)&buckets, in_size*sizeof(int2)) );
+	CUDA_CALL( cudaMemset(buckets, 0xff, in_size*sizeof(int2)) );
+
 	CUDA_CALL( cudaMalloc((void**)&d_failure, sizeof(bool)) );
+	CUDA_CALL( cudaMemset(d_failure, 0, sizeof(bool)) );
 
 	bool splitResult = splitToBuckets(
 			values, in_size, bucket_constants, bucket_cnt,
