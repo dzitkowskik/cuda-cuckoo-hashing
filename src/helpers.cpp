@@ -4,6 +4,18 @@
 #include "macros.h"
 #include <vector_functions.h>
 
+template <typename T> void PrintDevicePtr(
+	thrust::device_ptr<T> data, int size, const char* name)
+{
+	std::cout << name << std::endl;
+	thrust::copy(data, data+size,
+		std::ostream_iterator<T>(std::cout, " "));
+	std::cout << std::endl;
+}
+
+template void PrintDevicePtr<unsigned int>(thrust::device_ptr<unsigned int>, int, const char*);
+template void PrintDevicePtr<int>(thrust::device_ptr<int>, int, const char*);
+
 int2* GenerateRandomKeyValueData(const int N)
 {
 	auto time = std::chrono::system_clock::now();
@@ -35,6 +47,19 @@ void printData(int2* data, int N, const char* name)
 	{
 		int2 temp = data_ptr[i];
 		std::cout << "(" << temp.x << "," << temp.y << ")";
+	}
+	std::cout << std::endl;
+}
+
+void printHashMap(int2* data, int N, const char* name)
+{
+	printf("%s\n", name);
+	thrust::device_ptr<int2> data_ptr(data);
+	for(int i=0; i<N; i++)
+	{
+		int2 temp = data_ptr[i];
+		if(temp.x != -1)
+			std::cout << "(" << temp.x << "," << temp.y << ")[" << i << "]";
 	}
 	std::cout << std::endl;
 }

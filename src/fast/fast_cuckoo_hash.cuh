@@ -10,7 +10,7 @@
 
 #define PART_HASH_MAP_SIZE 576
 #define FAST_CUCKOO_HASH_BLOCK_SIZE 512
-#define WANTED_BUCKET_CAPACITY 256
+#define WANTED_BUCKET_CAPACITY 64
 
 #include "cuckoo_hash.hpp"
 #include <stdexcept>

@@ -21,5 +21,8 @@ int* getKeys(int2* key_values, int size);
 void PrintStencil(thrust::device_ptr<int> stencil, int size, const char* name);
 void PrintDeviceVector(thrust::device_vector<int2> data, const char* name);
 void PrintIntVector(thrust::device_vector<int> data, const char* name);
+void printHashMap(int2* data, int N, const char* name);
+
+template<typename T> void PrintDevicePtr(thrust::device_ptr<T> data, int size, const char* name);
 
 #endif /* HELPERS_H_ */
