@@ -15,8 +15,10 @@
 inline __device__ __host__
 unsigned hashFunction(const unsigned constant, const int key, const size_t size)
 {
-	unsigned long long int c0 = constant ^ HASH_FUNC_SALT;
-	unsigned long long int c1 = constant * key;
+	unsigned long long int c = constant;
+	unsigned long long int k = key;
+	unsigned long long int c0 = c ^ HASH_FUNC_SALT;
+	unsigned long long int c1 = c * k;
 	return ((c0 + c1) % HASH_FUNC_PRIME_DIVISOR_2) % size;
 }
 
@@ -24,7 +26,8 @@ inline __device__ __host__
 unsigned bucketHashFunction(
 		const unsigned c0, const unsigned c1, const int key, const size_t size)
 {
-	unsigned long long int value = (c0 + c1*key) % HASH_FUNC_PRIME_DIVISOR;
+	unsigned long long int k = key;
+	unsigned long long int value = (c0 + c1*k) % HASH_FUNC_PRIME_DIVISOR;
 	return value % size;
 }
 
