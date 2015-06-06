@@ -130,7 +130,7 @@ __global__ void insertKernel(
 		int* failures,
 		int2* hashes)
 {
-	volatile unsigned i, hash;
+	unsigned i, hash;
 	unsigned idx = threadIdx.x;
 	unsigned idx2 = threadIdx.x + blockDim.x;
 	__shared__ int2 s[PART_HASH_MAP_SIZE];
@@ -165,30 +165,16 @@ __global__ void insertKernel(
 			if(value.y != s[hash].y)
 				s[hash] = int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
 			else if(old_value.x == EMPTY_BUCKET_KEY)
-			{
 				working = false;
-			}
-			else
-			{
-				value = old_value;
-			}
+			else value = old_value;
 		}
 	}
-	if(working)
-	{
-		atomicAdd(failures, 1);
-	}
+	if(working) atomicAdd(failures, 1);
 
 	// COPY SHARED MEMORY TO HASH MAP
 	__syncthreads();
-	if(idx2 < PART_HASH_MAP_SIZE)
-	{
-		hashMap_part[idx2].x = s[idx2].x;
-		hashMap_part[idx2].y = s[idx2].y;
-	}
-	__syncthreads();
-	hashMap_part[idx].x = s[idx].x;
-	hashMap_part[idx].y = s[idx].y;
+	if(idx2 < PART_HASH_MAP_SIZE) hashMap_part[idx2] = s[idx2];
+	hashMap_part[idx] = s[idx];
 }
 
 bool fast_cuckooHash(
@@ -200,9 +186,6 @@ bool fast_cuckooHash(
 		Constants<3> constants,
 		int max_iters)
 {
-//	printf("Constants %d %d %d\n", constants.values[0], constants.values[1], constants.values[2]);
-//	printf("Bucket Constants %d %d\n", bucket_constants.values[0], bucket_constants.values[1]);
-
 	const int block_size = FAST_CUCKOO_HASH_BLOCK_SIZE;
 	unsigned int* starts;
 	unsigned int* counts;
@@ -260,7 +243,8 @@ bool fast_cuckooHash(
 	CUDA_CALL( cudaFree(buckets) );
 	CUDA_CALL( cudaFree(d_failure) );
 	CUDA_CALL( cudaFree(hashes) );
-	for(int i=0; i<bucket_cnt; i++) CUDA_CALL( cudaStreamDestroy(streams[i]) );
+	for(int i=0; i<bucket_cnt; i++)
+		CUDA_CALL( cudaStreamDestroy(streams[i]) );
 	delete [] streams;
 
 //	printHashMap(hashMap, 2*576, "HASH MAP: ");
