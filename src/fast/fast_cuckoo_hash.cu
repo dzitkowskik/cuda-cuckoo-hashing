@@ -127,8 +127,7 @@ __global__ void insertKernel(
 		const int bucket_size,
 		Constants<3> constants,
 		const unsigned max_iters,
-		int* failures,
-		int2* hashes)
+		int* failures)
 {
 	unsigned i, hash;
 	unsigned idx = threadIdx.x;
@@ -147,9 +146,7 @@ __global__ void insertKernel(
 
 	// COPY HASH MAP TO SHARED MEMORY
 	s[idx] = hashMap_part[idx];
-
-	if(idx2 < PART_HASH_MAP_SIZE)
-		s[idx2] = hashMap_part[idx2];
+	if(idx2 < PART_HASH_MAP_SIZE) s[idx2] = hashMap_part[idx2];
 	__syncthreads();
 
 	#pragma unroll
@@ -192,19 +189,14 @@ bool fast_cuckooHash(
 	int2* buckets;
 	int* d_failure;
 	int h_failure;
-
-//	printf("bucket_cnt = %d\n", bucket_cnt);
+	const int steam_no = bucket_cnt < MAX_STEAM_NO ? bucket_cnt : MAX_STEAM_NO;
 
 	// CREATE STREAMS
-	cudaStream_t* streams = new cudaStream_t[bucket_cnt];
-	for(int i=0; i<bucket_cnt; i++)
+	cudaStream_t* streams = new cudaStream_t[steam_no];
+	for(int i=0; i<steam_no; i++)
 		CUDA_CALL( cudaStreamCreate(&streams[i]) );
 
 	// ALLOCATE MEMORY
-	int2* hashes;
-	CUDA_CALL( cudaMalloc((void**)&hashes, in_size*sizeof(int2)) );
-	CUDA_CALL( cudaMemset(hashes, 0, in_size*sizeof(int2)) );
-
 	CUDA_CALL( cudaMalloc((void**)&starts, bucket_cnt*sizeof(unsigned int)) );
 	CUDA_CALL( cudaMemset(starts, 0, bucket_cnt*sizeof(unsigned int)) );
 
@@ -223,32 +215,24 @@ bool fast_cuckooHash(
 
 	if(splitResult)
 	{
-//		printf("Split success!\n");
-		const int shared_mem_size = PART_HASH_MAP_SIZE * sizeof(int2);
 		for(int i=0; i<bucket_cnt; i++)
 		{
-			insertKernel<<<1, block_size, 0, streams[i]>>>(
+			insertKernel<<<1, block_size, 0, streams[i%steam_no]>>>(
 					buckets, starts, counts, i, hashMap,
-					PART_HASH_MAP_SIZE, constants, max_iters, d_failure, hashes);
+					PART_HASH_MAP_SIZE, constants, max_iters, d_failure);
 		}
 		cudaDeviceSynchronize();
 		CUDA_CALL( cudaMemcpy(&h_failure, d_failure, sizeof(int), cudaMemcpyDeviceToHost) );
 	} else return true;
-
-//	printData(hashes, in_size, "Insert Hashes: ");
 
 	// FREE MEMORY
 	CUDA_CALL( cudaFree(starts) );
 	CUDA_CALL( cudaFree(counts) );
 	CUDA_CALL( cudaFree(buckets) );
 	CUDA_CALL( cudaFree(d_failure) );
-	CUDA_CALL( cudaFree(hashes) );
-	for(int i=0; i<bucket_cnt; i++)
+	for(int i=0; i<steam_no; i++)
 		CUDA_CALL( cudaStreamDestroy(streams[i]) );
-	delete [] streams;
-
-//	printHashMap(hashMap, 2*576, "HASH MAP: ");
-//	printf("NO FAILURES: %d\n", h_failure);
+	delete streams;
 
 	return h_failure;
 }
@@ -260,7 +244,7 @@ __global__ void toInt2Kernel(const int* keys, const int size, int2* out)
 
 	if(idx >= size) return;
 	out[idx].x = keys[idx];
-	out[idx].y = -1; // SAVE OLD POSITION
+	out[idx].y = EMPTY_BUCKET_KEY;
 }
 
 __global__ void retrieveKernel(
@@ -269,32 +253,31 @@ __global__ void retrieveKernel(
 		int size,
 		int bucket_cnt,
 		Constants<3> constants,
-		Constants<2> bucket_constants,
-		int2* hashes)
+		Constants<2> bucket_constants)
 {
 	unsigned idx = threadIdx.x + blockIdx.x * blockDim.x +
 					blockIdx.y * blockDim.x * gridDim.x;
 	if(idx >= size) return;
 
 	int key = values[idx].x;
-	unsigned bucket = bucketHashFunction(
+
+    unsigned hash = bucketHashFunction(
 			bucket_constants.values[0], bucket_constants.values[1], key, bucket_cnt);
-    volatile unsigned hash, hash_idx;
+    const unsigned bucket_start = hash * PART_HASH_MAP_SIZE;
     int2 entry;
 
+	#pragma unroll
 	for(int i = 0; i < 3; i++)
 	{
-		hash = hashFunction(constants.values[i%3], key, PART_HASH_MAP_SIZE);
-		hash_idx = hash + bucket * PART_HASH_MAP_SIZE;
-		entry = hashMap[hash_idx];
-		if(entry.x == key)
+		if(entry.x != key)
 		{
-			break;
+			hash = hashFunction(constants.values[i%3], key, PART_HASH_MAP_SIZE);
+			entry = hashMap[hash + bucket_start];
 		}
 	}
 
 	if(entry.x == key)
-		values[idx].y = entry.y;
+		values[idx] = entry;
 	else values[idx] = int2{-1,-1};
 }
 
@@ -309,29 +292,18 @@ int2* fast_cuckooRetrieve(
 	auto grid = CuckooHash<2>::GetGrid(size);
 	int blockSize = CuckooHash<2>::DEFAULT_BLOCK_SIZE;
 
-//	printf("Constants %d %d %d\n", constants.values[0], constants.values[1], constants.values[2]);
-//	printf("Bucket Constants %d %d\n", bucket_constants.values[0], bucket_constants.values[1]);
-//	printHashMap(hashMap, bucket_cnt*576, "HASH MAP: ");
-
 	// ALLOCATE MEMORY
-	int2 *result, *hashes;
+	int2 *result;
 	CUDA_CALL( cudaMalloc((void**)&result, size*sizeof(int2)) );
 	CUDA_CALL( cudaMemset(result, 0xff, size*sizeof(int2)) );
-	CUDA_CALL( cudaMalloc((void**)&hashes, 3*size*sizeof(int2)) );
-	CUDA_CALL( cudaMemset(hashes, 0, 3*size*sizeof(int2)) );
 
 	// SPLIT TO BUCKETS
 	toInt2Kernel<<<grid, blockSize>>>(keys, size, result);
 	cudaDeviceSynchronize();
 
 	retrieveKernel<<<grid, blockSize>>>(
-			result, hashMap, size, bucket_cnt, constants, bucket_constants, hashes);
+			result, hashMap, size, bucket_cnt, constants, bucket_constants);
 	cudaDeviceSynchronize();
-
-//	printData(hashes, 3*size, "Hashes: ");
-
-	// FREE MEMORY
-	CUDA_CALL( cudaFree(hashes) );
 
 	return result;
 }
