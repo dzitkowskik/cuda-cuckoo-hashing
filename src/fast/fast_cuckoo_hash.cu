@@ -92,9 +92,6 @@ bool splitToBuckets(
 			values, size, constants, counts,
 			bucket_cnt, d_offsets, block_size, d_failure);
 
-//	thrust::device_ptr<unsigned int> counts_ptr(counts);
-//	PrintDevicePtr(counts_ptr, bucket_cnt, "Counts: ");
-
 	cudaDeviceSynchronize();
 	CUDA_CALL( cudaMemcpy(&h_failure, d_failure, sizeof(bool), cudaMemcpyDeviceToHost) );
 	CUDA_CALL( cudaFree(d_failure) );
@@ -110,10 +107,6 @@ bool splitToBuckets(
 		cudaDeviceSynchronize();
 	}
 
-//	thrust::device_ptr<unsigned int> starts_ptr(starts);
-//	PrintDevicePtr(starts_ptr, bucket_cnt, "Starts: ");
-//	printData(result, size, "Split result: ");
-
 	CUDA_CALL( cudaFree(d_offsets) );
 	return !h_failure;
 }
@@ -124,9 +117,7 @@ __global__ void insertKernel(
 		const unsigned int* counts,
 		const int arrId,
 		int2* hashMap,
-		const int bucket_size,
 		Constants<3> constants,
-		const unsigned max_iters,
 		int* failures)
 {
 	unsigned i, hash;
@@ -218,8 +209,7 @@ bool fast_cuckooHash(
 		for(int i=0; i<bucket_cnt; i++)
 		{
 			insertKernel<<<1, block_size, 0, streams[i%steam_no]>>>(
-					buckets, starts, counts, i, hashMap,
-					PART_HASH_MAP_SIZE, constants, max_iters, d_failure);
+					buckets, starts, counts, i, hashMap, constants, d_failure);
 		}
 		cudaDeviceSynchronize();
 		CUDA_CALL( cudaMemcpy(&h_failure, d_failure, sizeof(int), cudaMemcpyDeviceToHost) );

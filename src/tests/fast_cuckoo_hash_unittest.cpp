@@ -21,7 +21,7 @@ TEST(GpuCuckooTest, cuckooHash_FAST_noexception)
 	auto data = GenerateRandomKeyValueData(N);
 
 	FastCuckooHash hash;
-	hash.Init(N*50);
+	hash.Init(N*5);
 	hash.BuildTable(data, N);
 
 	CUDA_CHECK_RETURN( cudaFree(data) );
@@ -33,7 +33,7 @@ TEST(GpuCuckooTest, cuckooHash_FAST_storeSucceeded)
 	auto data = GenerateRandomKeyValueData(N);
 
 	FastCuckooHash hash;
-	hash.Init(N*50);
+	hash.Init(N*5);
 
 	EXPECT_TRUE( hash.BuildTable(data, N) );
 
@@ -68,7 +68,7 @@ TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Small)
 	auto keys = getKeys(data, N);
 
 	FastCuckooHash hash;
-	hash.Init(N*60);
+	hash.Init(N*16);
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);
 
@@ -89,7 +89,7 @@ TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Medium)
 	auto keys = getKeys(data, N);
 
 	FastCuckooHash hash;
-	hash.Init(N*60);
+	hash.Init(N*5);
 	EXPECT_TRUE( hash.BuildTable(data, N) );
 	auto result = hash.GetItems(keys, N);
 
@@ -105,12 +105,12 @@ TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Medium)
 
 TEST(GpuCuckooTest, cuckooHash_FAST_storeAndretrieve_Large)
 {
-	int N = 100000;
+	int N = 10000;
 	auto data = GenerateRandomKeyValueData(N);
 	auto keys = getKeys(data, N);
 
 	FastCuckooHash hash;
-	hash.Init(N*60);
+	hash.Init(N*5);
 	hash.BuildTable(data, N);
 	auto result = hash.GetItems(keys, N);
 
