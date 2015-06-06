@@ -213,9 +213,9 @@ bool fast_cuckooHash(
 //	printf("bucket_cnt = %d\n", bucket_cnt);
 
 	// CREATE STREAMS
-//	cudaStream_t* streams = new cudaStream_t[bucket_cnt];
-//	for(int i=0; i<bucket_cnt; i++)
-//		CUDA_CALL( cudaStreamCreate(&streams[i]) );
+	cudaStream_t* streams = new cudaStream_t[bucket_cnt];
+	for(int i=0; i<bucket_cnt; i++)
+		CUDA_CALL( cudaStreamCreate(&streams[i]) );
 
 	// ALLOCATE MEMORY
 	int2* hashes;
@@ -244,7 +244,7 @@ bool fast_cuckooHash(
 		const int shared_mem_size = PART_HASH_MAP_SIZE * sizeof(int2);
 		for(int i=0; i<bucket_cnt; i++)
 		{
-			insertKernel<<<1, block_size>>>(
+			insertKernel<<<1, block_size, 0, streams[i]>>>(
 					buckets, starts, counts, i, hashMap,
 					PART_HASH_MAP_SIZE, constants, max_iters, d_failure, hashes);
 		}
@@ -260,8 +260,8 @@ bool fast_cuckooHash(
 	CUDA_CALL( cudaFree(buckets) );
 	CUDA_CALL( cudaFree(d_failure) );
 	CUDA_CALL( cudaFree(hashes) );
-//	for(int i=0; i<bucket_cnt; i++) CUDA_CALL( cudaStreamDestroy(streams[i]) );
-//	delete [] streams;
+	for(int i=0; i<bucket_cnt; i++) CUDA_CALL( cudaStreamDestroy(streams[i]) );
+	delete [] streams;
 
 //	printHashMap(hashMap, 2*576, "HASH MAP: ");
 //	printf("NO FAILURES: %d\n", h_failure);
