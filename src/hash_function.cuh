@@ -16,7 +16,8 @@ inline __device__ __host__
 unsigned hashFunction(const unsigned constant, const int key, const size_t size)
 {
 	unsigned long long int val = constant ^ HASH_FUNC_SALT + constant * key;
-	return (val % HASH_FUNC_PRIME_DIVISOR_2) % size;
+	unsigned result = val % HASH_FUNC_PRIME_DIVISOR;
+	return result % size;
 }
 
 inline __device__ __host__

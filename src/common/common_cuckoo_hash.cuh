@@ -10,8 +10,6 @@
 
 #include "cuckoo_hash.hpp"
 
-#define DEFAULT_STASH_SIZE 777
-
 template<unsigned N>
 bool common_cuckooHash(
 		int2* values,

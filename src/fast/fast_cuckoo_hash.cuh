@@ -9,8 +9,9 @@
 #define FAST_CUCKOO_HASH_CUH_
 
 #define PART_HASH_MAP_SIZE 576
+#define PIECE_SIZE 192
 #define FAST_CUCKOO_HASH_BLOCK_SIZE 512
-#define WANTED_BUCKET_CAPACITY 128
+#define WANTED_BUCKET_CAPACITY 409
 #define MAX_STEAM_NO 16
 
 #include "cuckoo_hash.hpp"
@@ -44,11 +45,18 @@ public:
 	virtual bool BuildTable(int2* values, size_t size)
 	{
 		this->_bucketCnt = (size / WANTED_BUCKET_CAPACITY) + 1;
-		this->_usedSize = this->_bucketCnt * PART_HASH_MAP_SIZE; // PART_HASH_MAP_SIZE <- bucket size
+		this->_usedSize = (this->_bucketCnt + 1) * PART_HASH_MAP_SIZE; // PART_HASH_MAP_SIZE <- bucket size
 		this->_bucketConstants.initRandom();
 
 		if(this->_usedSize > this->_maxSize)
-			throw std::runtime_error("Hash map max size too small!");
+		{
+//			throw std::runtime_error("Hash map max size too small!");
+			printf("Reallocate memory...\n");
+			CUDA_CALL( cudaFree(this->_data) );
+			this->_maxSize = this->_usedSize;
+			CUDA_CALL( cudaMalloc((void**)&this->_data, this->_maxSize * sizeof(int2)) );
+			CUDA_CALL( cudaMemset(this->_data, 0xFF, _maxSize * sizeof(int2)) );
+		}
 
 		int k = 0;
 		while(fast_cuckooHash(
