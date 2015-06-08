@@ -11,7 +11,7 @@
 #define PART_HASH_MAP_SIZE 576
 #define FAST_CUCKOO_HASH_BLOCK_SIZE 512
 #define WANTED_BUCKET_CAPACITY 128
-#define MAX_STEAM_NO 10
+#define MAX_STEAM_NO 16
 
 #include "cuckoo_hash.hpp"
 #include <stdexcept>
@@ -60,7 +60,7 @@ public:
 				this->_hashConstants,
 				MAX_RETRIES))
 		{
-//			printf("AGAIN %d\n", k);
+			printf("AGAIN %d\n", k);
 			if(k == this->MAX_RESTARTS) return false;
 			CUDA_CALL( cudaMemset(this->_data, 0xFF, this->_maxSize * sizeof(int2)) );
 			this->_hashConstants.initRandom();

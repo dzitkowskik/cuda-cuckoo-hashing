@@ -129,16 +129,16 @@ __global__ void insertKernel(
 	const int2* values = valuesArray + starts[arrId];
 	const int size = counts[arrId];
 	const int part = PART_HASH_MAP_SIZE * arrId;
-
 	int2* hashMap_part = hashMap + part;
-	int2 old_value, value;
-	bool working = idx < size;
-	if(working) value = values[idx];
 
 	// COPY HASH MAP TO SHARED MEMORY
 	s[idx] = hashMap_part[idx];
 	if(idx2 < PART_HASH_MAP_SIZE) s[idx2] = hashMap_part[idx2];
 	__syncthreads();
+
+	int2 old_value, value;
+	bool working = idx < size;
+	if(working) value = values[idx];
 
 	#pragma unroll
 	for(i = 0; i <= MAX_RETRIES; i++)
