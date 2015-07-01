@@ -95,13 +95,15 @@ bool compareData(int2* a, int2* b, int size)
 	thrust::device_ptr<int2> a_ptr(a);
 	thrust::device_ptr<int2> b_ptr(b);
     bool result = true;
+    int cnt = 0;
 	for(int i=0; i<size; i++)
 	{
 		int2 a_value = a_ptr[i];
 		int2 b_value = b_ptr[i];
 		if(a_value.x != b_value.x || a_value.y != b_value.y)
 		{
-			printf("Bad value[%d]! Expected: (%d,%d), Actual: (%d,%d)\n",
+			if(cnt++ < 10)
+				printf("Bad value[%d]! Expected: (%d,%d), Actual: (%d,%d)\n",
 					i, a_value.x, a_value.y, b_value.x, b_value.y);
 			result = false;
 		}

@@ -11,8 +11,8 @@
 #define PART_HASH_MAP_SIZE 576
 #define PIECE_SIZE 192
 #define FAST_CUCKOO_HASH_BLOCK_SIZE 512
-#define WANTED_BUCKET_CAPACITY 409
-#define MAX_STEAM_NO 16
+#define WANTED_BUCKET_CAPACITY 256
+#define MAX_STREAM_NO 16
 
 #include "cuckoo_hash.hpp"
 #include <stdexcept>

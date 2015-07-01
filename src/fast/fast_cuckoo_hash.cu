@@ -202,7 +202,7 @@ bool fast_cuckooHash(
 	int2* buckets;
 	int* d_failure, * d_cnt;
 	int h_failure, h_cnt;
-	const int steam_no = bucket_cnt < MAX_STEAM_NO ? bucket_cnt : MAX_STEAM_NO;
+	const int steam_no = bucket_cnt < MAX_STREAM_NO ? bucket_cnt : MAX_STREAM_NO;
 
 	// CREATE STREAMS
 	cudaStream_t* streams = new cudaStream_t[steam_no];
@@ -257,6 +257,7 @@ bool fast_cuckooHash(
 
 	printf("FAILURES NO: %d\n", h_failure);
 	printf("STASH CNT: %d\n", h_cnt);
+	printf("BUCKET CNT: %d\n", bucket_cnt);
 
 	return h_failure;
 }
@@ -278,7 +279,7 @@ __global__ void retrieveKernel(
 		int size,
 		int bucket_cnt,
 		Constants<3> constants,
-		Constants<2> bucket_constants, int2* debugData)
+		Constants<2> bucket_constants)
 {
 	unsigned idx = threadIdx.x + blockIdx.x * blockDim.x +
 					blockIdx.y * blockDim.x * gridDim.x;
@@ -288,21 +289,16 @@ __global__ void retrieveKernel(
 
     unsigned hash = bucketHashFunction(
 			bucket_constants.values[0], bucket_constants.values[1], key, bucket_cnt);
-    const unsigned bucket_start = hash * PART_HASH_MAP_SIZE;
-    int2 entry;
+    unsigned bucket_start = hash * PART_HASH_MAP_SIZE;
     unsigned hash_idx;
+    int2 entry;
 
-	#pragma unroll
 	for(int i = 0; i < 3; i++)
 	{
-		if(entry.x != key)
-		{
-			hash = hashFunction(constants.values[i%3], key, PIECE_SIZE);
-			hash_idx = hash + ((i%3) * PIECE_SIZE) + bucket_start;
-			entry = hashMap[hash_idx];
-			debugData[idx].x = entry.x;
-			debugData[idx].y = hash_idx;
-		}
+		hash = hashFunction(constants.values[i%3], key, PIECE_SIZE);
+		hash_idx = hash + ((i%3) * PIECE_SIZE) + bucket_start;
+		entry = hashMap[hash_idx];
+		if(entry.x == key) break;
 	}
 
 	if(entry.x != key) // check stash
@@ -311,16 +307,12 @@ __global__ void retrieveKernel(
 			if(stash[i].x == key)
 			{
 				entry = stash[i];
+				hash_idx = -i;
 				break;
 			}
 	}
 
-//	if(entry.x == key) values[idx] = entry;
-//	else values[idx] = int2{-2,-2};
 	values[idx] = entry;
-	if(values[idx].x != entry.x || values[idx].y != entry.y)
-		values[idx].x = -3;
-
 }
 
 int2* fast_cuckooRetrieve(
@@ -334,8 +326,8 @@ int2* fast_cuckooRetrieve(
 	auto grid = CuckooHash<2>::GetGrid(size);
 	int blockSize = CuckooHash<2>::DEFAULT_BLOCK_SIZE;
 
-	printHashMap(hashMap, (bucket_cnt + 1)*PART_HASH_MAP_SIZE, "Hash Map:");
-	printHashMap(hashMap + bucket_cnt*PART_HASH_MAP_SIZE, DEFAULT_STASH_SIZE, "Stash:");
+//	printHashMap(hashMap, bucket_cnt*PART_HASH_MAP_SIZE, "Hash Map:");
+//	printHashMap(hashMap + bucket_cnt*PART_HASH_MAP_SIZE, DEFAULT_STASH_SIZE, "Stash:");
 
 	// ALLOCATE MEMORY
 	int2 *result;
@@ -343,20 +335,13 @@ int2* fast_cuckooRetrieve(
 	CUDA_CALL( cudaMalloc((void**)&result, size*sizeof(int2)) );
 	CUDA_CALL( cudaMemset(result, 0xff, size*sizeof(int2)) );
 
-	int2* debugData;
-	CUDA_CALL( cudaMalloc((void**)&debugData, size*sizeof(int2)));
-
 	// SPLIT TO BUCKETS
 	toInt2Kernel<<<grid, blockSize>>>(keys, size, result);
 	cudaDeviceSynchronize();
 
 	retrieveKernel<<<grid, blockSize>>>(
-			result, hashMap, stash, size, bucket_cnt, constants, bucket_constants, debugData);
+			result, hashMap, stash, size, bucket_cnt, constants, bucket_constants);
 	cudaDeviceSynchronize();
-
-	printData(debugData, size, "debug data");
-
-	CUDA_CALL( cudaFree(debugData) );
 
 	CudaCheckError();
 	return result;
