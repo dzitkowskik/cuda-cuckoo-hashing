@@ -79,16 +79,16 @@ public:
 		return true;
 	}
 
-		virtual int2* GetItems(int* keys, size_t size)
-		{
-			return fast_cuckooRetrieve(
-					keys,
-					size,
-					this->_data,
-					this->_bucketCnt,
-					this->_bucketConstants,
-					this->_hashConstants);
-		}
+	virtual int2* GetItems(int* keys, size_t size)
+	{
+		return fast_cuckooRetrieve(
+				keys,
+				size,
+				this->_data,
+				this->_bucketCnt,
+				this->_bucketConstants,
+				this->_hashConstants);
+	}
 };
 
 #endif /* FAST_CUCKOO_HASH_CUH_ */

@@ -16,6 +16,11 @@
  *  which can be found here http://idav.ucdavis.edu/~dfalcant/research/hashing.php
  */
 
+
+//
+//Przeanalizowac problem dobierania funkcji hashujacej (wartosci losowej) pod wzgl«dem ewolucyjnym,
+//zmieniamy pewne bity wartosci wylosowanej zamiast losowac nowˆ i sprawdzamy czy pomog¸o
+
 #include "fast_cuckoo_hash.cuh"
 #include "hash_function.cuh"
 #include "helpers.h"
@@ -139,9 +144,9 @@ __global__ void insertKernel(
 		s[idx2] = hashMap_part[idx2];
 	__syncthreads();
 
-	int2 old_value, value;
+	int2 old_value = int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
 	bool working = idx < size;
-	value = working ? values[idx] : int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
+	int2 value = working ? values[idx] : int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
 
 	#pragma unroll
 	for(i = 0; i <= MAX_RETRIES; i++)
@@ -155,10 +160,13 @@ __global__ void insertKernel(
 		if(value.x == s[hash_idx].x)		// check for success
 		{
 			if(value.y != s[hash_idx].y)
-				s[hash_idx] = int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
+				s[hash_idx] = old_value;
 			else if(old_value.x == EMPTY_BUCKET_KEY)
 				working = false;
-			else value = old_value;
+			else {
+				value = old_value;
+				old_value = int2{EMPTY_BUCKET_KEY, EMPTY_BUCKET_KEY};
+			}
 		}
 		__syncthreads();
 	}
@@ -270,7 +278,7 @@ __global__ void retrieveKernel(
 		int size,
 		int bucket_cnt,
 		Constants<3> constants,
-		Constants<2> bucket_constants)
+		Constants<2> bucket_constants, int2* debugData)
 {
 	unsigned idx = threadIdx.x + blockIdx.x * blockDim.x +
 					blockIdx.y * blockDim.x * gridDim.x;
@@ -292,6 +300,8 @@ __global__ void retrieveKernel(
 			hash = hashFunction(constants.values[i%3], key, PIECE_SIZE);
 			hash_idx = hash + ((i%3) * PIECE_SIZE) + bucket_start;
 			entry = hashMap[hash_idx];
+			debugData[idx].x = entry.x;
+			debugData[idx].y = hash_idx;
 		}
 	}
 
@@ -305,8 +315,12 @@ __global__ void retrieveKernel(
 			}
 	}
 
-	if(entry.x == key) values[idx] = entry;
-	else values[idx] = int2{-2,-2};
+//	if(entry.x == key) values[idx] = entry;
+//	else values[idx] = int2{-2,-2};
+	values[idx] = entry;
+	if(values[idx].x != entry.x || values[idx].y != entry.y)
+		values[idx].x = -3;
+
 }
 
 int2* fast_cuckooRetrieve(
@@ -329,15 +343,21 @@ int2* fast_cuckooRetrieve(
 	CUDA_CALL( cudaMalloc((void**)&result, size*sizeof(int2)) );
 	CUDA_CALL( cudaMemset(result, 0xff, size*sizeof(int2)) );
 
+	int2* debugData;
+	CUDA_CALL( cudaMalloc((void**)&debugData, size*sizeof(int2)));
+
 	// SPLIT TO BUCKETS
 	toInt2Kernel<<<grid, blockSize>>>(keys, size, result);
 	cudaDeviceSynchronize();
 
 	retrieveKernel<<<grid, blockSize>>>(
-			result, hashMap, stash, size, bucket_cnt, constants, bucket_constants);
+			result, hashMap, stash, size, bucket_cnt, constants, bucket_constants, debugData);
 	cudaDeviceSynchronize();
 
-	CudaCheckError();
+	printData(debugData, size, "debug data");
 
+	CUDA_CALL( cudaFree(debugData) );
+
+	CudaCheckError();
 	return result;
 }
