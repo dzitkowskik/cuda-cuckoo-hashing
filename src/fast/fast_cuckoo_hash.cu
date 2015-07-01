@@ -255,9 +255,9 @@ bool fast_cuckooHash(
 		CUDA_CALL( cudaStreamDestroy(streams[i]) );
 	delete streams;
 
-	printf("FAILURES NO: %d\n", h_failure);
-	printf("STASH CNT: %d\n", h_cnt);
-	printf("BUCKET CNT: %d\n", bucket_cnt);
+//	printf("FAILURES NO: %d\n", h_failure);
+//	printf("STASH CNT: %d\n", h_cnt);
+//	printf("BUCKET CNT: %d\n", bucket_cnt);
 
 	return h_failure;
 }

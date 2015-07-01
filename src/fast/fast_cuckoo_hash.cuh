@@ -51,7 +51,7 @@ public:
 		if(this->_usedSize > this->_maxSize)
 		{
 //			throw std::runtime_error("Hash map max size too small!");
-			printf("Reallocate memory...\n");
+//			printf("Reallocate memory...\n");
 			CUDA_CALL( cudaFree(this->_data) );
 			this->_maxSize = this->_usedSize;
 			CUDA_CALL( cudaMalloc((void**)&this->_data, this->_maxSize * sizeof(int2)) );
@@ -68,7 +68,7 @@ public:
 				this->_hashConstants,
 				MAX_RETRIES))
 		{
-			printf("AGAIN %d\n", k);
+//			printf("AGAIN %d\n", k);
 			if(k == this->MAX_RESTARTS) return false;
 			CUDA_CALL( cudaMemset(this->_data, 0xFF, this->_maxSize * sizeof(int2)) );
 			this->_hashConstants.initRandom();

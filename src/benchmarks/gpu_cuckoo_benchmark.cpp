@@ -51,7 +51,7 @@ static void BM_COMMON_BUILD_HASH_HNO_2(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		state.PauseTiming();
-		hash.Init(N*100);
+		hash.Init(N*3);
 		data = GenerateRandomKeyValueData(N);
 		state.ResumeTiming();
 
@@ -80,7 +80,7 @@ static void BM_COMMON_BUILD_HASH_HNO_3(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		state.PauseTiming();
-		hash.Init(N*6);
+		hash.Init(N*3);
 		data = GenerateRandomKeyValueData(N);
 		state.ResumeTiming();
 
@@ -109,7 +109,7 @@ static void BM_FAST_BUILD_HASH_HNO_3(benchmark::State& state)
 	while (state.KeepRunning())
 	{
 		state.PauseTiming();
-		hash.Init(N*6);
+		hash.Init(N*3);
 		data = GenerateRandomKeyValueData(N);
 		state.ResumeTiming();
 
